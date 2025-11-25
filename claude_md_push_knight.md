@@ -3,6 +3,40 @@
 ## Session Startup Protocol
 **Always read PLANNING.md at the start of every new conversation, check TASKS.md before starting your work, mark completed tasks to TASKS.md immediately, and add newly discovered tasks to TASKS.md when found.**
 
+## CRITICAL: Development Environment Requirements
+
+**IMPORTANT: This project uses Maven with Java 21 and JavaFX 21. Follow these requirements for ALL code generation:**
+
+1. **Use Maven-based configuration**
+   - Use JavaFX imports as specified in Maven dependencies
+   - Follow Maven project structure: `src/main/java` for source files
+   - Target Java 21 features and syntax
+
+2. **Use standard JavaFX structure**
+   - Standard imports: `javafx.application.Application`, `javafx.stage.Stage`, `javafx.scene.Scene`
+   - Standard JavaFX components and APIs
+   - Code must work with JavaFX 21 dependencies from Maven
+
+3. **Resource file locations**
+   - Resource files (images, CSS) are located in **"src/main/resources" folder**
+   - Follow Maven standard structure: `src/main/resources/images/`, `src/main/resources/sounds/`, `src/main/resources/css/`, `src/main/resources/fxml/`
+
+4. **Target Java version**
+   - Target Java version is **Java 21**
+   - Use Java 21 features and syntax
+
+5. **Code compatibility**
+   - Code must work with Maven-managed JavaFX dependencies
+   - Follow standard Java and JavaFX practices
+   - Ensure compatibility with Java 21 and JavaFX 21
+
+6. **Follow project structure**
+   - Follow structure and naming conventions from TASKS.md and CLAUDE.md
+   - Use package structure: `com.pushknight.*`
+   - Source files in: `src/main/java/com/pushknight/` (Maven structure)
+
+**When generating code, always ensure it follows these Maven and Java 21 requirements!**
+
 ## Project Overview
 Push Knight Peril is a Java/JavaFX game featuring combat mechanics, enemy waves, and upgrade systems. The player must survive against various enemy types while managing cooldowns and utilizing traps.
 
@@ -53,9 +87,9 @@ The game features multiple enemy types with distinct behaviors:
 
 ## Development Guidelines
 
-### Code Organization
+### Code Organization (Eclipse Structure)
 ```
-src/main/java/com/pushknight/
+src/com/pushknight/
   /entities
     - Player.java
     - Enemy.java (abstract base class)
@@ -72,16 +106,21 @@ src/main/java/com/pushknight/
     - Trap.java
   /controllers
     - GameController.java
+    - MenuController.java
     - UpgradeController.java
   /views
     - GameView.java
+    - MenuView.java
     - UpgradeView.java
   /utils
     - Constants.java
     - Vector2D.java
+    - GameState.java
+    - Direction.java
+    - EnemyType.java
   /Main.java (JavaFX Application entry point)
 
-src/main/resources/
+resources/ (at project root, NOT in src/)
   /images
   /sounds
   /fxml (if using FXML for UI)
@@ -190,10 +229,16 @@ scene.setOnKeyReleased(e -> handleKeyRelease(e.getCode()));
 - Implement sprite animation with `ImageView` and timer-based frame switching
 - Consider `Canvas` for performance-critical rendering
 
-### Asset Loading
+### Asset Loading (Eclipse Resources)
+**Note: Resources folder is at project root, not in src/**
 ```java
+// For resources folder at project root (Eclipse structure)
 Image playerSprite = new Image(getClass()
     .getResourceAsStream("/images/player.png"));
+// Or if resources is configured as source folder:
+Image playerSprite = new Image(getClass()
+    .getResourceAsStream("/resources/images/player.png"));
+
 AudioClip soundEffect = new AudioClip(getClass()
     .getResource("/sounds/hit.wav").toString());
 ```
@@ -260,6 +305,25 @@ public class GameController {
 }
 ```
 
+## Current Implementation Status
+As of January 25, 2025:
+
+### Completed Components
+- **Project Infrastructure**: Maven project structure with Java 21 and JavaFX 21
+- **Core Framework**: Main application with JavaFX game loop (AnimationTimer) and Canvas rendering
+- **Utilities**: Complete Constants, Vector2D, GameState, Direction, and EnemyType implementations
+- **Entity System**: Abstract Entity class with interfaces (Updatable, Renderable, Collidable, Damageable)
+- **Package Structure**: All required packages (entities, systems, controllers, views, utils) created
+
+### In Progress / Next Steps
+- **Character System**: Create Character abstract class as base for Player and Enemy
+- **Player Implementation**: Player class with movement, input handling, and health
+- **Enemy Classes**: Implementation of Skeleton, Goblin, SkeletonBrute, and BoomerGoblin
+- **Game Systems**: GameDirector, CollisionSystem, UpgradeManager, and other core systems
+- **UI Framework**: MenuController, GameController, and UI components
+
+---
+
 ## Debugging Tips
 - Log spawn rates and wave progression for balance testing
 - Visualize collision boxes, especially for isObstacle entities
@@ -268,5 +332,5 @@ public class GameController {
 
 ---
 
-*Last Updated: [Date]*
-*Version: 1.0*
+*Last Updated: 2025-01-25*
+*Version: 1.1*

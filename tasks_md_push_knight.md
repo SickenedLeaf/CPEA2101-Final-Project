@@ -12,54 +12,57 @@
 ## Milestone 1: Project Foundation & Setup
 
 ### Project Structure
-- [ ] Initialize Maven project with correct structure
-- [ ] Create pom.xml with JavaFX dependencies
-- [ ] Set up package structure (com.pushknight.*)
-- [ ] Create all main package folders (entities, systems, controllers, views, utils)
-- [ ] Set up resources folder structure (images, sounds, css, fxml)
-- [ ] Create .gitignore file for Java/Maven project
+- [x] Initialize Maven project with correct structure
+- [x] Create pom.xml with JavaFX dependencies
+- [x] Set up package structure (com.pushknight.*)
+- [x] Create all main package folders (entities, systems, controllers, views, utils)
+- [x] Set up resources folder structure (images, sounds, css, fxml)
+- [x] Create .gitignore file for Java/Maven project
 - [ ] Initialize Git repository
-- [ ] Create README.md with build instructions
+- [x] Create README.md with build instructions
 
 ### Core Utilities & Constants
-- [ ] Create Constants.java with game configuration
-  - [ ] Define window dimensions (WIDTH, HEIGHT)
-  - [ ] Define game timing constants (FPS, FRAME_TIME)
-  - [ ] Define movement speeds and cooldowns
-  - [ ] Define spawn rates and wave timing
-  - [ ] Define enemy properties (health, damage, speeds)
-- [ ] Create GameState enum (MENU, PLAYING, PAUSED, GAME_OVER, UPGRADE_SELECTION)
-- [ ] Create Direction enum (UP, DOWN, LEFT, RIGHT, NONE)
-- [ ] Create EnemyType enum (SKELETON, GOBLIN, SKELETON_BRUTE, BOOMER_GOBLIN)
-- [ ] Create Vector2D utility class
-  - [ ] Implement x, y fields
-  - [ ] Implement add, subtract, multiply methods
-  - [ ] Implement normalize, distance, magnitude methods
+- [x] Create Constants.java with game configuration
+  - [x] Define window dimensions (WIDTH, HEIGHT)
+  - [x] Define game timing constants (FPS, FRAME_TIME)
+  - [x] Define movement speeds and cooldowns
+  - [x] Define spawn rates and wave timing
+  - [x] Define enemy properties (health, damage, speeds)
+  - [x] Define grid system constants (cell size, grid dimensions)
+- [x] Create GameState enum (MENU, PLAYING, PAUSED, GAME_OVER, UPGRADE_SELECTION)
+- [x] Create Direction enum (UP, DOWN, LEFT, RIGHT, NONE)
+- [x] Create EnemyType enum (SKELETON, GOBLIN, SKELETON_BRUTE, BOOMER_GOBLIN)
+- [x] Create Vector2D utility class
+  - [x] Implement x, y fields
+  - [x] Implement add, subtract, multiply methods
+  - [x] Implement normalize, distance, magnitude methods
 
 ### Base Entity Classes
-- [ ] Create Entity abstract class
-  - [ ] Add protected fields: x, y, width, height
-  - [ ] Add abstract update(long now) method
-  - [ ] Add abstract render(GraphicsContext gc) method
-  - [ ] Add getBounds() method returning Rectangle2D
-  - [ ] Add getX(), getY(), setX(), setY() methods
-- [ ] Create Updatable interface
-- [ ] Create Renderable interface
-- [ ] Create Collidable interface
-  - [ ] Add collidesWith(Collidable other) method
-  - [ ] Add getBounds() method
-- [ ] Create Damageable interface
-  - [ ] Add takeDamage(int amount) method
-  - [ ] Add isAlive() method
-  - [ ] Add getHealth() method
+- [x] Create Entity abstract class
+  - [x] Add protected fields: x, y, width, height
+  - [x] Add abstract update(long now) method
+  - [x] Add abstract render(GraphicsContext gc) method
+  - [x] Add getBounds() method returning Rectangle2D
+  - [x] Add getX(), getY(), setX(), setY() methods
+- [x] Create Updatable interface
+- [x] Create Renderable interface
+- [x] Create Collidable interface
+  - [x] Add collidesWith(Collidable other) method
+  - [x] Add getBounds() method
+- [x] Create Damageable interface
+  - [x] Add takeDamage(int amount) method
+  - [x] Add isAlive() method
+  - [x] Add getHealth() method
 
 ### Main Application Setup
-- [ ] Create Main.java extending Application
-- [ ] Set up primary Stage with title "Push Knight Peril"
-- [ ] Create main Scene with specified dimensions
-- [ ] Add window close handler
-- [ ] Set up basic Canvas or Scene Graph rendering
-- [ ] Implement AnimationTimer for game loop
+- [x] Create Main.java extending Application
+- [x] Set up primary Stage with title "Push Knight Peril"
+- [x] Create main Scene with specified dimensions
+- [x] Add window close handler
+- [x] Set up basic Canvas or Scene Graph rendering
+- [x] Implement AnimationTimer for game loop
+- [x] Implement grid system for playing field
+  - [x] Add grid constants (cell size, grid dimensions)
 - [ ] Test window opens and game loop runs
 
 ---
@@ -743,14 +746,6 @@
 
 ---
 
-## Discovered Tasks
-
-*Add new tasks here as you discover them during development*
-
-- [ ] 
-
----
-
-**Last Updated**: [Date]
-**Total Tasks**: 200+
-**Completed**: 0
+**Last Updated**: 2025-01-25
+**Total Tasks**: 188
+**Completed**: 17
