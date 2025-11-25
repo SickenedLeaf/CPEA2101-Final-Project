@@ -9,8 +9,6 @@ public class Constants {
     // Window dimensions
     public static final int WINDOW_WIDTH = 1024;
     public static final int WINDOW_HEIGHT = 768;
-    // Grid
-    public static final int GRID_CELL_SIZE = 32;
     
     // Game timing
     public static final int TARGET_FPS = 60;
@@ -85,6 +83,11 @@ public class Constants {
     public static final int SCORE_GOBLIN = 15;
     public static final int SCORE_SKELETON_BRUTE = 50;
     public static final int SCORE_BOOMER_GOBLIN = 25;
+    
+    // Grid system
+    public static final double GRID_CELL_SIZE = 40.0; // Size of each grid cell in pixels
+    public static final int GRID_COLS = (int) (WINDOW_WIDTH / GRID_CELL_SIZE); // Number of columns
+    public static final int GRID_ROWS = (int) (WINDOW_HEIGHT / GRID_CELL_SIZE); // Number of rows
     
     // Private constructor to prevent instantiation
     private Constants() {

@@ -1,7 +1,6 @@
 package com.pushknight;
 
 import com.pushknight.controllers.MenuController;
-import com.pushknight.controllers.GameController;
 import com.pushknight.utils.Constants;
 import com.pushknight.utils.GameState;
 import javafx.animation.AnimationTimer;
@@ -23,7 +22,6 @@ public class Main extends Application {
     
     // Menu components
     private MenuController menuController;
-    private GameController gameController;
     
     // Game components
     private Canvas canvas;
@@ -47,11 +45,11 @@ public class Main extends Application {
                 System.exit(0);
             });
             
+            // Initialize menu
+            initializeMenu();
+            
             // Initialize game scene (but don't show it yet)
             initializeGameScene();
-            
-            // Initialize menu (depends on canvas/scene)
-            initializeMenu();
             
             // Show menu first
             showMenu();
@@ -68,19 +66,20 @@ public class Main extends Application {
      * Initializes the menu system.
      */
     private void initializeMenu() {
-        // Use the controllers that exist in the codebase
-        menuController = new MenuController();
-        gameController = new GameController();
-
-        // Provide rendering and input scene to both controllers
-        menuController.setGraphicsContext(gc);
-        menuController.setScene(gameScene);
-
-        gameController.setGraphicsContext(gc);
-        gameController.setScene(gameScene);
-
-        // Connect the menu to the game controller for state transitions
-        menuController.setGameController(gameController);
+        menuController = new MenuController(primaryStage);
+        
+        // Set up menu button callbacks
+        menuController.setOnStartGame(() -> {
+            startGame();
+        });
+        
+        menuController.setOnShowHowToPlay(() -> {
+            showHowToPlay();
+        });
+        
+        menuController.setOnShowSettings(() -> {
+            showSettings();
+        });
     }
     
     /**
@@ -88,10 +87,7 @@ public class Main extends Application {
      */
     private void showMenu() {
         currentState = GameState.MENU;
-        // Ensure the menu scene is shown and menu is rendered
-        primaryStage.setScene(gameScene);
-        stopGameLoop();
-        menuController.render();
+        menuController.showMenu();
     }
     
     /**
@@ -315,4 +311,3 @@ public class Main extends Application {
         launch(args);
     }
 }
-
