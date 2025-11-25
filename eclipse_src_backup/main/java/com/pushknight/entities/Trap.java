@@ -37,9 +37,6 @@ public class Trap extends GameObject {
      */
     @Override
     public void update(long now) {
-        // Call parent update method (GameObject)
-        super.update(now);
-
         // Reset activation status for this frame
         activatedThisFrame = false;
 

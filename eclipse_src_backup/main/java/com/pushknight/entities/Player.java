@@ -39,9 +39,6 @@ public class Player extends Character {
      */
     @Override
     public void update(long now) {
-        // Call parent update method (Character)
-        super.update(now);
-
         // Update push availability based on cooldown
         if (!pushAvailable && (now - lastPushTime) >= Constants.PUSH_COOLDOWN) {
             pushAvailable = true;

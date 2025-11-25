@@ -143,9 +143,6 @@ public abstract class Enemy extends Character {
      */
     @Override
     public void update(long now) {
-        // Call parent update method (Character)
-        super.update(now);
-
         // Update attack cooldown tracking
         // Additional enemy-specific update code would go here
     }
