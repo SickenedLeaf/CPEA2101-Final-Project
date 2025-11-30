@@ -1,0 +1,410 @@
+package application;
+
+import javafx.animation.FadeTransition;
+import javafx.application.Application;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+
+import java.util.Random;
+
+/**
+ * Sokoban-like grid game demonstrating movement, pushing, and visual attack
+ * effects. This version confirms that enemies are pushed into empty adjacent
+ * tiles when the player walks into them, and fixes the player's movement after
+ * a successful push/attack.
+ */
+public class ControllerTest2 extends Application {
+
+	private boolean upKeyPressed = false;
+	private boolean upMoveExecuted = false;
+	private boolean downKeyPressed = false;
+	private boolean downMoveExecuted = false;
+	private boolean leftKeyPressed = false;
+	private boolean leftMoveExecuted = false;
+	private boolean rightKeyPressed = false;
+	private boolean rightMoveExecuted = false;
+
+	// --- Constants ---
+	private static final int TILE_SIZE = 60;
+	private static final int GRID_WIDTH = 10;
+	private static final int GRID_HEIGHT = 8;
+	private static final Random RANDOM = new Random();
+
+	// --- Model: Game State ---
+	// Player position
+	private int playerX = 1;
+	private int playerY = 1;
+
+	// Grid: 1=Wall, 2=Enemy, 0=Empty
+	private int[][] gameGrid = new int[GRID_WIDTH][GRID_HEIGHT];
+
+	// --- View: Visual Elements ---
+	private GridPane gridView = new GridPane();
+	private StackPane[][] tilePanes = new StackPane[GRID_WIDTH][GRID_HEIGHT];
+	private Rectangle playerNode;
+
+	@Override
+	public void start(Stage primaryStage) {
+		// 1. Initialize the Game State (Model)
+		initializeGameGrid();
+
+		// 2. Build the Game View
+		initializeGameView();
+
+		// 3. Set up the Scene and Input (Controller)
+		Scene scene = new Scene(gridView);
+		handleInput(scene);
+
+		primaryStage.setTitle("Grid Push Game");
+		primaryStage.setScene(scene);
+		primaryStage.show();
+
+		// Initial setup for the player's position on the screen
+		updatePlayerView();
+	}
+
+	/**
+	 * Initializes the game grid with walls and enemies for testing the push/attack
+	 * logic.
+	 */
+	private void initializeGameGrid() {
+		// Create border walls
+		for (int x = 0; x < GRID_WIDTH; x++) {
+			gameGrid[x][0] = 1; // Wall
+			gameGrid[x][GRID_HEIGHT - 1] = 1; // Wall
+		}
+		for (int y = 0; y < GRID_HEIGHT; y++) {
+			gameGrid[0][y] = 1; // Wall
+			gameGrid[GRID_WIDTH - 1][y] = 1; // Wall
+		}
+
+		// Add some internal walls (1) and enemies (2)
+		gameGrid[5][3] = 1;
+		gameGrid[5][4] = 1;
+		gameGrid[6][4] = 2; // Enemy 1 (Pushable)
+		gameGrid[3][2] = 2; // Enemy 2
+		gameGrid[3][3] = 2; // Enemy 3
+
+		playerX = 1;
+		playerY = 1;
+		gameGrid[playerX][playerY] = 0; // Ensure player starts on empty tile
+	}
+
+	/**
+	 * Builds the JavaFX GridPane and all visual elements.
+	 */
+	private void initializeGameView() {
+		gridView.setAlignment(Pos.CENTER);
+		gridView.setStyle("-fx-background-color: #333; -fx-padding: 10;");
+
+		for (int x = 0; x < GRID_WIDTH; x++) {
+			for (int y = 0; y < GRID_HEIGHT; y++) {
+				// StackPane holds the tile background, entities, and effects
+				StackPane tilePane = new StackPane();
+				tilePane.setPrefSize(TILE_SIZE, TILE_SIZE);
+				tilePanes[x][y] = tilePane;
+
+				// 1. Tile Background (Floor)
+				Rectangle tile = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#4A4A4A"));
+				tile.setStroke(Color.web("#222"));
+				tilePane.getChildren().add(tile);
+
+				// 2. Entity (Wall/Enemy)
+				Node entityNode = null;
+				switch (gameGrid[x][y]) {
+				case 1: // Wall
+					Rectangle wall = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#666"));
+					wall.setArcWidth(8);
+					wall.setArcHeight(8);
+					entityNode = wall;
+					break;
+				case 2: // Enemy
+					Rectangle enemy = new Rectangle(TILE_SIZE - 10, TILE_SIZE - 10, Color.web("#C0392B")); // Red
+					enemy.setArcWidth(15);
+					enemy.setArcHeight(15);
+					entityNode = enemy;
+					break;
+				}
+
+				if (entityNode != null) {
+					tilePane.getChildren().add(entityNode);
+				}
+
+				GridPane.setConstraints(tilePane, x, y);
+				gridView.getChildren().add(tilePane);
+			}
+		}
+
+		// 3. Player Node (Rectangle)
+		playerNode = new Rectangle(TILE_SIZE - 10, TILE_SIZE - 10, Color.web("#2ECC71")); // Green
+		playerNode.setArcWidth(15);
+		playerNode.setArcHeight(15);
+
+		// Add player to the initial tile
+		tilePanes[playerX][playerY].getChildren().add(playerNode);
+	}
+
+	/**
+	 * Handles keyboard input for movement.
+	 */
+	private void handleInput(Scene scene) {
+		scene.setOnKeyPressed(event -> {
+			int newX = playerX;
+			int newY = playerY;
+
+			if (event.getCode() == KeyCode.W) { // Up
+				upKeyPressed = true;
+				if (upKeyPressed && !upMoveExecuted) {
+					newY--;
+					upMoveExecuted = true;
+				}
+			} else if (event.getCode() == KeyCode.S) { // Down
+				downKeyPressed = true;
+				if (downKeyPressed && !downMoveExecuted) {
+					newY++;
+					downMoveExecuted = true;
+				}
+			} else if (event.getCode() == KeyCode.A) { // Left
+				leftKeyPressed = true;
+				if (leftKeyPressed && !leftMoveExecuted) {
+					newX--;
+					leftMoveExecuted = true;
+				}
+			} else if (event.getCode() == KeyCode.D) { // Right
+				rightKeyPressed = true;
+				if (rightKeyPressed && !rightMoveExecuted) {
+					newX++;
+					rightMoveExecuted = true;
+				}
+			}
+
+			// Attempt to move and handle interactions
+			// dirX and dirY represent the direction of the push
+			attemptMove(newX, newY, newX - playerX, newY - playerY);
+			event.consume();
+		});
+		
+		scene.setOnKeyReleased(event -> {
+        	keyReleased(event);
+        	event.consume();
+        });
+		
+	}
+	public void keyReleased(KeyEvent e) {
+    	KeyCode keyCode = e.getCode();
+    	
+    	switch (keyCode) {
+        case W:{
+        	 
+            upKeyPressed = false;
+            //reset the execution lock (The crucial step for single-move)
+            upMoveExecuted = false; 
+            break;
+        }
+           
+
+        case A:{
+        	leftKeyPressed = false;
+            leftMoveExecuted = false;
+            break;
+        }
+            
+
+        case S:{
+        	downKeyPressed = false;
+            downMoveExecuted = false;
+            break;
+        }
+            
+
+        case D:{
+        	rightKeyPressed = false;
+            rightMoveExecuted = false;
+            break;
+        }
+            
+    	}
+    }
+	
+
+	/**
+	 * Main game logic for movement and interaction.
+	 * 
+	 * @param targetX The tile the player is trying to enter.
+	 * @param targetY The tile the player is trying to enter.
+	 * @param dirX    The direction of the push (+1, -1, or 0) on the X axis.
+	 * @param dirY    The direction of the push (+1, -1, or 0) on the Y axis.
+	 */
+	private void attemptMove(int targetX, int targetY, int dirX, int dirY) {
+		// 1. Check bounds
+		if (targetX < 0 || targetX >= GRID_WIDTH || targetY < 0 || targetY >= GRID_HEIGHT) {
+			return;
+		}
+
+		int targetType = gameGrid[targetX][targetY];
+
+		if (targetType == 0) {
+			//move
+			movePlayer(targetX, targetY);
+
+		} else if (targetType == 1) {
+			// cant push cause wall
+			System.out.println("Blocked by Wall at (" + targetX + ", " + targetY + ")");
+
+		} else if (targetType == 2) {
+			// try push
+
+			int pushX = targetX + dirX;
+			int pushY = targetY + dirY;
+
+			// Check what's behind the enemy
+			if (pushX >= 0 && pushX < GRID_WIDTH && pushY >= 0 && pushY < GRID_HEIGHT) {
+				int pushTargetType = gameGrid[pushX][pushY];
+
+				if (pushTargetType == 0) {
+					
+
+					// move enemy to next spot
+					moveEnemy(targetX, targetY, pushX, pushY);
+
+					gameGrid[targetX][targetY] = 0;
+					gameGrid[pushX][pushY] = 2;
+				} else if (pushTargetType == 1) {
+					// push to wall
+
+					System.out.println("Enemy at (" + targetX + ", " + targetY + ") hit Wall at (" + pushX + ", "
+							+ pushY + ")! Enemy defeated.");
+
+					showAttackEffect(pushX, pushY);
+
+					
+					removeEntity(targetX, targetY);
+
+				} else if (pushTargetType == 2) {
+					
+					System.out.println("Blocked by another Enemy at (" + pushX + ", " + pushY + ")");
+
+				}
+			}
+		}
+	}
+
+	/**
+	 * Updates the player's position in the model and the view.
+	 */
+	private void movePlayer(int newX, int newY) {
+		// Remove player from old tile
+		tilePanes[playerX][playerY].getChildren().remove(playerNode);
+
+		// Update model position
+		playerX = newX;
+		playerY = newY;
+
+		// Add player to new tile
+		updatePlayerView();
+	}
+
+	/**
+	 * Moves an enemy from (oldX, oldY) to (newX, newY). This function handles both
+	 * the model update (gameGrid) and the view update.
+	 */
+	private void moveEnemy(int oldX, int oldY, int newX, int newY) {
+		// 1. Update Model
+		gameGrid[oldX][oldY] = 0; // Old spot is now empty
+		gameGrid[newX][newY] = 2; // New spot now has enemy
+
+		
+		updateGuiGrid();
+	}
+
+	/**
+	 * Removes an entity from the game and the view.
+	 */
+	private void removeEntity(int x, int y) {
+		// 1. Update Model
+		gameGrid[x][y] = 0; // Spot is now empty
+
+		// 2. Update View (Remove the Node)
+		Node entityNode = tilePanes[x][y].getChildren().stream()
+				.filter(node -> node instanceof Rectangle && node != playerNode).findFirst().orElse(null);
+
+		if (entityNode != null) {
+			tilePanes[x][y].getChildren().remove(entityNode);
+		}
+		updateGuiGrid();
+	}
+
+	/**
+	 * Ensures the player node is visually placed in the current playerX/playerY
+	 * tile.
+	 */
+	private void updatePlayerView() {
+		if (!tilePanes[playerX][playerY].getChildren().contains(playerNode)) {
+			tilePanes[playerX][playerY].getChildren().add(playerNode);
+		}
+	}
+
+	private void updateGuiGrid() {
+		// Iterate through all tiles
+		for (int x = 0; x < GRID_WIDTH; x++) {
+			for (int y = 0; y < GRID_HEIGHT; y++) {
+				StackPane tilePane = tilePanes[x][y];
+
+				if(x == playerX && y == playerY) {
+				}
+				else if(gameGrid[x][y]==0) {
+					Rectangle tile = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#4A4A4A"));
+					tile.setStroke(Color.web("#222"));
+					tilePane.getChildren().add(tile);
+				}
+				else if(gameGrid[x][y]==2) {
+					// Enemy
+					// Create and add a new enemy node
+					Rectangle enemy = new Rectangle(TILE_SIZE - 10, TILE_SIZE - 10, Color.web("#C0392B")); // Red
+					enemy.setArcWidth(15);
+					enemy.setArcHeight(15);
+					tilePane.getChildren().add(enemy);
+
+				}
+			}
+		}
+	}
+
+	/**
+	 * The core method for showing a temporary visual hit effect on a tile.
+	 */
+	private void showAttackEffect(int x, int y) {
+		StackPane targetPane = tilePanes[x][y];
+
+		// 1. Create the visual effect Node (Orange flash for impact)
+		Rectangle flash = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#FF7700"));
+		flash.setOpacity(0.8);
+
+		// 2. Add the flash to the target tile's StackPane
+		targetPane.getChildren().add(flash);
+
+		// 3. Create a FadeTransition to make it disappear
+		FadeTransition ft = new FadeTransition(Duration.millis(300), flash);
+		ft.setFromValue(0.8);
+		ft.setToValue(0.0);
+
+		// 4. Remove the flash node after the transition completes
+		ft.setOnFinished(e -> targetPane.getChildren().remove(flash));
+
+		// 5. Start the animation
+		ft.play();
+	}
+
+	public static void main(String[] args) {
+		launch(args);
+	}
+}
