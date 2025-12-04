@@ -123,7 +123,7 @@ public class GameLogic {
 				} else if (pushTargetType == 1) {
 					// Pushed into a wall: Damage/Defeat enemy and move player
 					takeDamage(targetX, targetY, WALL_DAMAGE);
-					
+					actionTaken = true;
 					// Register impact event for visual feedback
 					addEvent(new GameUpdateEvent(GameUpdateEvent.Type.IMPACT, pushX, pushY)); 
 
@@ -311,4 +311,5 @@ public class GameLogic {
 			this.value = health;
 		}
 	}
+
 }
