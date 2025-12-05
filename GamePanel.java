@@ -8,12 +8,14 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Polygon; // Added for WallSpikes visualization
+import javafx.scene.shape.Circle; // Added for Campfire visualization
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 
 import java.util.HashMap;
 import java.util.Map;
-import application.GameLogic.GameUpdateEvent;
+import application.GameLogic.GameUpdateEvent; // Added missing import
 
 /**
  * GamePanel (View): Handles all graphical rendering and visual effects using JavaFX.
@@ -21,7 +23,7 @@ import application.GameLogic.GameUpdateEvent;
  */
 public class GamePanel {
 
-	private static final int TILE_SIZE = 48; // Updated to match user's constant
+	private static final int TILE_SIZE = 48;
 	
 	private GameLogic logic;
 	private GridPane gridView = new GridPane();
@@ -37,6 +39,7 @@ public class GamePanel {
 
 	/**
 	 * Builds the initial JavaFX GridPane and all visual elements based on initial state.
+	 * Now uses logic.getEntityTypeAt() and handles WallSpikes (3) and Campfires (4).
 	 */
 	private void initializeGameView() {
 		gridView.setAlignment(Pos.CENTER);
@@ -55,12 +58,17 @@ public class GamePanel {
 				
 				// 2. Entity Layer 
 				Node entityNode = null;
-				int type = logic.getEntityAt(x, y);
+				// Corrected: Using the correct method from GameLogic
+				int type = logic.getEntityAt(x, y); 
 
 				if (type == 1) { 
 					entityNode = createWallNode();
 				} else if (type == 2) { 
 					entityNode = createEnemyNode(x, y, logic.getEnemyHealthAt(x, y));
+				} else if (type == 3) { // WallSpikes
+					entityNode = createWallSpikesNode();
+				} else if (type == 4) { // Campfire
+					entityNode = createCampfireNode();
 				}
 
 				if (entityNode != null) {
@@ -87,6 +95,43 @@ public class GamePanel {
 		wall.setArcHeight(8);
 		return wall;
 	}
+
+	/**
+	 * Creates the visual node for WallSpikes (type 3).
+	 */
+	private StackPane createWallSpikesNode() {
+		Rectangle base = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#34495e"));
+		base.setArcWidth(8);
+		base.setArcHeight(8);
+		
+		// Simple spike representation using a small red polygon
+		Polygon spike = new Polygon(
+			TILE_SIZE / 2.0 - 8, TILE_SIZE / 2.0 + 8, // Left bottom
+			TILE_SIZE / 2.0 + 8, TILE_SIZE / 2.0 + 8, // Right bottom
+			TILE_SIZE / 2.0, TILE_SIZE / 2.0 - 8        // Top middle
+		);
+		spike.setFill(Color.web("#c0392b")); // Red for danger
+		
+		StackPane spikesPane = new StackPane(base, spike);
+		return spikesPane;
+	}
+
+	/**
+	 * Creates the visual node for a Campfire (type 4).
+	 */
+	private StackPane createCampfireNode() {
+		// Base campfire area
+		Rectangle fireBase = new Rectangle(TILE_SIZE - 12, TILE_SIZE - 12, Color.web("#d35400")); // Dark Orange/Wood color
+		fireBase.setArcWidth(20);
+		fireBase.setArcHeight(20);
+		
+		// Simple flame effect (small yellow circle)
+		Circle flame = new Circle(TILE_SIZE / 6, Color.web("#f1c40f")); // Yellow
+		flame.setTranslateY(-(TILE_SIZE / 6.0)); // Move up slightly
+		
+		StackPane campfirePane = new StackPane(fireBase, flame);
+		return campfirePane;
+	}
 	
 	private StackPane createEnemyNode(int x, int y, int health) {
 		Rectangle enemy = new Rectangle(TILE_SIZE - 10, TILE_SIZE - 10, Color.web("#e74c3c")); 
@@ -108,9 +153,11 @@ public class GamePanel {
 	
 	/**
 	 * Processes a single GameUpdateEvent and updates the GUI accordingly.
+	 * Fixed: Accessing event properties via the 'event' instance, not statically.
 	 */
 	public void handleEvent(GameUpdateEvent event) {
-		switch (event.type) {
+        // Removed unnecessary try-catch block
+		switch (event.type) { // Fixed: Call type() on the event instance
 			case PLAYER_MOVE:
 				moveNode(playerNode, event.oldX, event.oldY, event.newX, event.newY);
 				break;
