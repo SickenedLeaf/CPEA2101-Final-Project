@@ -1,204 +1,275 @@
 package application;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 /**
  * GameLogic (Model): Manages the entire game state and enforces all game rules.
- * This class is UI-agnostic and does not contain any JavaFX code.
- * Includes recursive push logic and enemy health tracking.
+ * This class is UI-agnostic and does not contain any JavaFX code. Includes
+ * recursive push logic and enemy health tracking. * UPDATED to use the new
+ * Obstacle class hierarchy (Wall=1, WallSpikes=3, Campfire=4).
  */
 public class GameLogic {
-
-	// --- Constants & Configuration (Updated from ControllerTest3) ---
+	// --- Constants & Configuration ---
 	public static final int GRID_WIDTH = 20;
 	public static final int GRID_HEIGHT = 14;
 	public static final int MAX_ENEMY_HP = 3;
-	public static final int WALL_DAMAGE = 1; 
-	
+	// WALL_DAMAGE is now obsolete, as damage is determined by the Obstacle object.
+
 	// --- Model: Game State ---
 	private int playerX = 1;
 	private int playerY = 1;
 
-	// EntityGrid: 1=Wall, 2=Enemy, 0=Empty
+	// entityGrid: 0=Empty, 1=Wall, 2=Enemy, 3=WallSpikes, 4=Campfire
 	private int[][] entityGrid = new int[GRID_WIDTH][GRID_HEIGHT];
+	private Enemy[][] enemyGrid = new Enemy[GRID_WIDTH][GRID_HEIGHT];
 
-	// Tracks current enemy health
-	private int[][] enemyHealthGrid = new int[GRID_WIDTH][GRID_HEIGHT];
-	
-	// Map to track changes for the UI to render (e.g., enemy moved from A to B)
+	// New grid to store the actual Obstacle objects, required to access
+	// damage/passability properties
+	private Obstacle[][] obstacleGrid = new Obstacle[GRID_WIDTH][GRID_HEIGHT];
+
 	private Map<String, GameUpdateEvent> pendingEvents = new HashMap<>();
-
+	private final Random random = new Random();
 
 	public GameLogic() {
 		initializeGameGrid();
 	}
 
 	/**
-	 * Initializes the game grid, including border walls and random internal walls.
-	 * Logic adapted from the user's ControllerTest3.
+	 * Creates and returns a random Obstacle type: Wall, WallSpikes, or Campfire.
+	 */
+	private Obstacle createRandomObstacle() {
+		// 0: Wall, 1: WallSpikes, 2: Campfire
+		int type = random.nextInt(3);
+
+		switch (type) {
+		case 0:
+			return new Wall();
+		case 1:
+			return new Spikes();
+		case 2:
+			return new Campfire();
+		default:
+			// Should not happen, but return a default Wall as a fallback
+			return new Wall();
+		}
+	}
+
+	/**
+	 * Helper to place a given obstacle and update both grids.
+	 */
+	private void placeObstacle(int x, int y, Obstacle obs) {
+		if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+			entityGrid[x][y] = obs.getEntityType();
+			obstacleGrid[x][y] = obs;
+		}
+	}
+
+	/**
+	 * Initializes the game grid, including border walls and random internal
+	 * obstacles.
 	 */
 	private void initializeGameGrid() {
-		// 1. Create border walls
+		// 1. Create border obstacles (randomly generated)
 		for (int x = 0; x < GRID_WIDTH; x++) {
-			entityGrid[x][0] = 1; // Wall
-			entityGrid[x][GRID_HEIGHT - 1] = 1; // Wall
+			placeObstacle(x, 0, new Wall());
+			placeObstacle(x, GRID_HEIGHT - 1, new Wall());
 		}
 		for (int y = 0; y < GRID_HEIGHT; y++) {
-			entityGrid[0][y] = 1; // Wall
-			entityGrid[GRID_WIDTH - 1][y] = 1; // Wall
+			placeObstacle(0, y, new Wall());
+			placeObstacle(GRID_WIDTH - 1, y, new Wall());
 		}
 
-		// 2. Setup initial entities for testing recursive push (from user's logic)
-		entityGrid[2][2] = 2; enemyHealthGrid[2][2] = MAX_ENEMY_HP;
-		entityGrid[3][2] = 2; enemyHealthGrid[3][2] = MAX_ENEMY_HP;
-		entityGrid[4][2] = 2; enemyHealthGrid[4][2] = MAX_ENEMY_HP;
-		entityGrid[5][1] = 1; // Wall to stop the chain
-
-		entityGrid[8][6] = 2; enemyHealthGrid[8][6] = MAX_ENEMY_HP;
+		// 2. Setup initial entities for testing recursive push
+		enemyGrid[2][2] = new Enemy(MAX_ENEMY_HP);
+		entityGrid[2][2] = 2;
+		System.out.println("[DEBUG] Enemy at (2,2) initialized with HP=" + enemyGrid[2][2].getHp());
 		
-		// 3. Random internal wall generation (from user's logic)
-		Random random = new Random();
+		enemyGrid[3][2] = new Enemy(MAX_ENEMY_HP);
+		entityGrid[3][2] = 2;
+		enemyGrid[4][2] = new Enemy(MAX_ENEMY_HP);
+		entityGrid[4][2] = 2;
+		
+		enemyGrid[8][6] = new Enemy(MAX_ENEMY_HP);
+		entityGrid[8][6] = 2;
+
+		// 3. Random internal obstacle generation
 		for (int x = 1; x < GRID_WIDTH - 1; x++) {
 			for (int y = 1; y < GRID_HEIGHT - 1; y++) {
-				// Only place walls if the spot is currently empty (0)
-				// The complex condition (x < 8 || x > 9) && (y < 7 || y > 8) is preserved
+				// Only place obstacles if the spot is currently empty (0)
 				if (entityGrid[x][y] == 0 && (x < 8 || x > 9) && (y < 7 || y > 8)) {
-					// 20% chance to place a wall
+					// 20% chance to place an obstacle
 					if (random.nextInt(1, 100) <= 20) {
-						entityGrid[x][y] = 1;
+						placeObstacle(x, y, createRandomObstacle());
 					}
 				}
 			}
 		}
-
 		playerX = 9;
-		playerY = 6; // Player starting position updated from user's logic
-		entityGrid[playerX][playerY] = 0; 
+		playerY = 6; // Player starting position
+		entityGrid[playerX][playerY] = 0;
+	}
+
+	/**
+	 * Checks if an entity type is an obstacle (Wall, WallSpikes, Campfire).
+	 */
+	private boolean isObstacle(int type) {
+		return type == 1 || type == 3 || type == 4;
 	}
 
 	/**
 	 * Main game logic for player movement and interaction.
-	 * * @param dirX The direction of the push (+1, -1, or 0) on the X axis.
+	 *
+	 * @param dirX The direction of the push (+1, -1, or 0) on the X axis.
 	 * @param dirY The direction of the push (+1, -1, or 0) on the Y axis.
 	 * @return true if an action (move/push) occurred, false otherwise.
 	 */
 	public boolean attemptMove(int dirX, int dirY) {
-		int targetX = playerX + dirX;
-		int targetY = playerY + dirY;
+	    int targetX = playerX + dirX;
+	    int targetY = playerY + dirY;
 
-		// 1. Check bounds
-		if (targetX < 0 || targetX >= GRID_WIDTH || targetY < 0 || targetY >= GRID_HEIGHT) {
-			return false;
-		}
-		
-		boolean actionTaken = false;
-		int targetType = entityGrid[targetX][targetY];
+	    if (targetX < 0 || targetX >= GRID_WIDTH || targetY < 0 || targetY >= GRID_HEIGHT) {
+	        System.out.println("[DEBUG] attemptMove blocked: out of bounds");
+	        return false;
+	    }
 
-		if (targetType == 0) {
-			// Target is empty: Move player
-			movePlayer(targetX, targetY);
-			actionTaken = true;
+	    int targetType = entityGrid[targetX][targetY];
+	    System.out.println("[DEBUG] attemptMove targetType=" + targetType + " at (" + targetX + "," + targetY + ")");
+	    boolean actionTaken = false;
 
-		} else if (targetType == 1) {
-			// Target is a wall: Blocked
-			System.out.println("Blocked by Wall at (" + targetX + ", " + targetY + ")");
+	    if (targetType == 0) {
+	        System.out.println("[DEBUG] Player moving into empty tile");
+	        movePlayer(targetX, targetY);
+	        actionTaken = true;
 
-		} else if (targetType == 2) {
-			// Target is an enemy: Try to push
-			
-			int pushX = targetX + dirX;
-			int pushY = targetY + dirY;
+	    } else if (isObstacle(targetType)) {
+	        Obstacle obstacle = obstacleGrid[targetX][targetY];
+	        System.out.println("[DEBUG] Player encountered obstacle: " + obstacle.getClass().getSimpleName());
+	        if (obstacle.isPassable()) {
+	            System.out.println("[DEBUG] Obstacle is passable, moving player");
+	            movePlayer(targetX, targetY);
+	            actionTaken = true;
+	        }
 
-			if (pushX >= 0 && pushX < GRID_WIDTH && pushY >= 0 && pushY < GRID_HEIGHT) {
-				
-				int pushTargetType = entityGrid[pushX][pushY];
+	    } else if (targetType == 2) {
+	        System.out.println("[DEBUG] Player attempting to push enemy at (" + targetX + "," + targetY + ")");
+	        int pushX = targetX + dirX;
+	        int pushY = targetY + dirY;
 
-				if (pushTargetType == 0) {
-					// Pushed into empty space: Move enemy and then player
-					moveEnemy(targetX, targetY, pushX, pushY);
-					actionTaken = true;
+	        if (pushX >= 0 && pushX < GRID_WIDTH && pushY >= 0 && pushY < GRID_HEIGHT) {
+	            int pushTargetType = entityGrid[pushX][pushY];
+	            System.out.println("[DEBUG] Push targetType=" + pushTargetType + " at (" + pushX + "," + pushY + ")");
 
-				} else if (pushTargetType == 1) {
-					// Pushed into a wall: Damage/Defeat enemy and move player
-					takeDamage(targetX, targetY, WALL_DAMAGE);
-					actionTaken = true;
-					// Register impact event for visual feedback
-					addEvent(new GameUpdateEvent(GameUpdateEvent.Type.IMPACT, pushX, pushY)); 
+	            if (pushTargetType == 0) {
+	                System.out.println("[DEBUG] Enemy pushed into empty tile");
+	                moveEnemy(targetX, targetY, pushX, pushY);
+	                actionTaken = true;
 
-				} else if (pushTargetType == 2) {
-					// Pushed into another enemy: Trigger recursive chain check
-					
-					if (attemptEntityPush(pushX, pushY, dirX, dirY)) {
-						// If the chain moved/cleared up, Enemy 1 can now move into (pushX, pushY)
-						moveEnemy(targetX, targetY, pushX, pushY);
-						actionTaken = true;
-					}
-				}
-			}
-		}
-		return actionTaken;
+	            } else if (isObstacle(pushTargetType)) {
+	                Obstacle obstacle = obstacleGrid[pushX][pushY];
+	                System.out.println("[DEBUG] Enemy pushed into obstacle: " + obstacle.getClass().getSimpleName());
+
+	                if (obstacle.isPassable()) {
+	                    moveEnemy(targetX, targetY, pushX, pushY);
+	                    actionTaken = true;
+	                } else {
+	                    // Impassable wall/spikes collision
+	                    addEvent(new GameUpdateEvent(GameUpdateEvent.Type.IMPACT, pushX, pushY));
+
+	                    // Apply damage once
+	                    takeDamage(targetX, targetY, obstacle.getCollisionDamage());
+
+	                    // Stop here — don’t re‑apply damage in subsequent checks
+	                    actionTaken = true;
+	                }
+	            } else if (pushTargetType == 2) {
+	                System.out.println("[DEBUG] Enemy pushed into another enemy at (" + pushX + "," + pushY + ")");
+	                	attemptEntityPush(pushX, pushY, dirX, dirY);
+	                    actionTaken = true;
+	            }
+	        }
+	    }
+
+	    return actionTaken;
 	}
 
+
+
+
+
+	/**
+	 * Recursively pushes an entity and subsequent entities.
+	 */
 	/**
 	 * Recursively pushes an entity and subsequent entities.
 	 */
 	private boolean attemptEntityPush(int entityX, int entityY, int dirX, int dirY) {
 	    int nextX = entityX + dirX;
 	    int nextY = entityY + dirY;
-	    
+
 	    if (nextX < 0 || nextX >= GRID_WIDTH || nextY < 0 || nextY >= GRID_HEIGHT) {
-	        return false; 
+	        return false;
 	    }
 
 	    int nextType = entityGrid[nextX][nextY];
 
 	    if (nextType == 0) {
-	        // Next spot is empty: Successful push. Move this entity.
 	        moveEnemy(entityX, entityY, nextX, nextY);
 	        return true;
 
-	    } else if (nextType == 1) {
-	        // Next spot is a wall: Damage/Defeat entity.
-	        takeDamage(entityX, entityY, WALL_DAMAGE);
-	        addEvent(new GameUpdateEvent(GameUpdateEvent.Type.IMPACT, nextX, nextY));
-	        
-	        // True if the entity was defeated (spot cleared)
-	        return entityGrid[entityX][entityY] == 0; 
-	        
-	    } else if (nextType == 2) {
-	        // Next spot is another enemy: Recursive push attempt.
-	        
-	        if (attemptEntityPush(nextX, nextY, dirX, dirY)) {
-	            // Chain cleared: Move this entity into the now empty spot (nextX, nextY).
+	    } else if (isObstacle(nextType)) {
+	        Obstacle obstacle = obstacleGrid[nextX][nextY];
+	        System.out.println("[DEBUG] Enemy collided with obstacle: " + obstacle.getClass().getSimpleName());
+
+	        if (obstacle.isPassable()) {
 	            moveEnemy(entityX, entityY, nextX, nextY);
 	            return true;
 	        } else {
-	            // Chain blocked.
+	        	addEvent(new GameUpdateEvent(GameUpdateEvent.Type.IMPACT, nextX, nextY));
+	            // Then apply collision damage to the new position
+	            takeDamage(entityX, entityY, obstacle.getCollisionDamage());
+
 	            return false;
 	        }
+	    } else if (nextType == 2) {
+	        attemptEntityPush(nextX, nextY, dirX, dirY); 
 	    }
-	    
+
 	    return false;
 	}
+
 
 
 	/**
 	 * Applies damage to an enemy at (x, y) and updates the model.
 	 */
+	/**
+	 * Applies damage to an enemy at (x, y) and updates the model.
+	 */
 	private void takeDamage(int x, int y, int damage) {
-		int currentHealth = enemyHealthGrid[x][y];
-		int newHealth = currentHealth - damage;
-		enemyHealthGrid[x][y] = newHealth;
+	    Enemy enemy = enemyGrid[x][y];
+	    if (enemy == null) {
+	        System.out.println("[DEBUG] takeDamage called at (" + x + "," + y + ") but no enemy present");
+	        return;
+	    }
 
-		addEvent(new GameUpdateEvent(GameUpdateEvent.Type.DAMAGE, x, y, newHealth));
+	    int beforeHp = enemy.getHp();
+	    enemy.takeDamage(damage);
+	    int afterHp = enemy.getHp();
 
-		if (newHealth <= 0) {
-			removeEntity(x, y);
-			System.out.println("Enemy at (" + x + ", " + y + ") defeated!");
-		}
+	    System.out.println("[DEBUG] Enemy at (" + x + "," + y + ") took " + damage +
+	                       " damage (HP " + beforeHp + " → " + afterHp + ")");
+
+	    addEvent(new GameUpdateEvent(GameUpdateEvent.Type.DAMAGE, x, y, afterHp));
+
+	    if (enemy.isDead()) {
+	        System.out.println("[DEBUG] Enemy at (" + x + "," + y + ") died");
+	        removeEntity(x, y);
+	    }
 	}
+
 
 
 	/**
@@ -207,10 +278,10 @@ public class GameLogic {
 	private void movePlayer(int newX, int newY) {
 		int oldX = playerX;
 		int oldY = playerY;
-		
+
 		playerX = newX;
 		playerY = newY;
-		
+
 		addEvent(new GameUpdateEvent(GameUpdateEvent.Type.PLAYER_MOVE, oldX, oldY, newX, newY));
 	}
 
@@ -218,59 +289,115 @@ public class GameLogic {
 	 * Moves an enemy from (oldX, oldY) to (newX, newY) and updates the model.
 	 */
 	private void moveEnemy(int oldX, int oldY, int newX, int newY) {
-		int health = enemyHealthGrid[oldX][oldY];
-		
-		// Clear old spot
-		entityGrid[oldX][oldY] = 0; 
-		enemyHealthGrid[oldX][oldY] = 0; 
-		
-		// Set new spot
-		entityGrid[newX][newY] = 2; 
-		enemyHealthGrid[newX][newY] = health;
-		
-		addEvent(new GameUpdateEvent(GameUpdateEvent.Type.ENEMY_MOVE, oldX, oldY, newX, newY, health));
+	    Enemy enemy = enemyGrid[oldX][oldY];
+	    if (enemy == null) return;
+
+	    // Clear old spot
+	    entityGrid[oldX][oldY] = 0;
+	    enemyGrid[oldX][oldY] = null;
+
+	    // Place enemy
+	    entityGrid[newX][newY] = 2;
+	    enemyGrid[newX][newY] = enemy;
+
+	    addEvent(new GameUpdateEvent(GameUpdateEvent.Type.ENEMY_MOVE, oldX, oldY, newX, newY, enemy.getHp()));
+
+	    // Apply campfire damage if needed
+	    Obstacle obsAtNew = obstacleGrid[newX][newY];
+	    if (obsAtNew != null && obsAtNew.isPassable() && obsAtNew.getPassDamage() > 0) {
+	        takeDamage(newX, newY, obsAtNew.getPassDamage());
+	    }
 	}
+
 
 	/**
 	 * Removes an entity from the game state.
 	 */
 	private void removeEntity(int x, int y) {
-		entityGrid[x][y] = 0; 
-		enemyHealthGrid[x][y] = 0; 
-		
-		addEvent(new GameUpdateEvent(GameUpdateEvent.Type.REMOVE_ENTITY, x, y));
+	    entityGrid[x][y] = 0;
+	    enemyGrid[x][y] = null;
+	    addEvent(new GameUpdateEvent(GameUpdateEvent.Type.REMOVE_ENTITY, x, y));
 	}
-	
+
+
 	// --- Event Handling for UI Synchronization ---
-	
+
 	/**
 	 * Adds a game event to the queue for the UI to process.
 	 */
 	private void addEvent(GameUpdateEvent event) {
-		// Use the event type and position as a unique key
 		String key = event.type.name() + event.newX + "," + event.newY;
+
+		if (event.type == GameUpdateEvent.Type.IMPACT) {
+			// Allow multiple IMPACT events per tile by making the key unique with a
+			// timestamp
+			key += "_" + System.nanoTime();
+		}
+
 		pendingEvents.put(key, event);
 	}
-	
+
 	/**
 	 * Retrieves and clears the list of pending events.
 	 */
-	public Map<String, GameUpdateEvent> flushEvents() {
-		Map<String, GameUpdateEvent> events = new HashMap<>(pendingEvents);
+	public List<GameUpdateEvent> flushEvents() {
+		List<GameUpdateEvent> events = new java.util.ArrayList<>(pendingEvents.values());
 		pendingEvents.clear();
+
+		// Stable, deterministic order to avoid race conditions in the view
+		events.sort((a, b) -> Integer.compare(priority(a.type), priority(b.type)));
 		return events;
 	}
 
+	private int priority(GameUpdateEvent.Type type) {
+		switch (type) {
+		case ENEMY_MOVE:
+			return 1;
+		case DAMAGE:
+			return 2;
+		case REMOVE_ENTITY:
+			return 3;
+		case IMPACT:
+			return 4;
+		case PLAYER_MOVE:
+			return 5;
+		default:
+			return 99;
+		}
+	}
+
 	// --- Getters for UI Access ---
-	public int getEntityAt(int x, int y) { return entityGrid[x][y]; }
-	public int getEnemyHealthAt(int x, int y) { return enemyHealthGrid[x][y]; }
-	public int getPlayerX() { return playerX; }
-	public int getPlayerY() { return playerY; }
+
+	/**
+	 * Returns the integer entity type identifier at (x, y). (0=Empty, 1=Wall,
+	 * 2=Enemy, 3=WallSpikes, 4=Campfire)
+	 */
+	public int getEntityAt(int x, int y) {
+		return entityGrid[x][y];
+	}
+
+	public int getEnemyHealthAt(int x, int y) {
+	    Enemy enemy = enemyGrid[x][y];
+	    return (enemy != null) ? enemy.getHp() : 0;
+	}
+
+
+	public int getPlayerX() {
+		return playerX;
+	}
+
+	public int getPlayerY() {
+		return playerY;
+	}
 	
+	
+
 	// Inner class to pass structured events to the UI/Controller
 	public static class GameUpdateEvent {
-		public enum Type { PLAYER_MOVE, ENEMY_MOVE, REMOVE_ENTITY, DAMAGE, IMPACT }
-		
+		public enum Type {
+			PLAYER_MOVE, ENEMY_MOVE, REMOVE_ENTITY, DAMAGE, IMPACT
+		}
+
 		public final Type type;
 		public final int oldX, oldY;
 		public final int newX, newY;
@@ -285,7 +412,7 @@ public class GameLogic {
 			this.newY = newY;
 			this.value = 0;
 		}
-		
+
 		// For Damage/Remove/Impact events
 		public GameUpdateEvent(Type type, int x, int y) {
 			this(type, x, y, x, y); // Calls the Move constructor
@@ -300,7 +427,7 @@ public class GameLogic {
 			this.newY = y;
 			this.value = health;
 		}
-		
+
 		// For ENEMY_MOVE with health
 		public GameUpdateEvent(Type type, int oldX, int oldY, int newX, int newY, int health) {
 			this.type = type;
@@ -311,5 +438,4 @@ public class GameLogic {
 			this.value = health;
 		}
 	}
-
 }

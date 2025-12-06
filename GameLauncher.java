@@ -3,10 +3,9 @@ package application;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 
-import java.util.Map;
+
 import application.GameLogic.GameUpdateEvent;
 
 /**
@@ -15,18 +14,9 @@ import application.GameLogic.GameUpdateEvent;
  */
 public class GameLauncher extends Application {
 
-	// --- Key State Tracking ---
-	private boolean upKeyPressed = false;
-	private boolean upMoveExecuted = false;
-	private boolean downKeyPressed = false;
-	private boolean downMoveExecuted = false;
-	private boolean leftKeyPressed = false;
-	private boolean leftMoveExecuted = false;
-	private boolean rightKeyPressed = false;
-	private boolean rightMoveExecuted = false;
-
 	private GameLogic logic;
 	private GamePanel panel;
+	private InputHandler input;
 
 	// Game loop variables for throttling (reintroduced for stability)
 	private long lastUpdateTimestamp = 0;
@@ -37,10 +27,11 @@ public class GameLauncher extends Application {
 		// 1. Initialize Model and View
 		logic = new GameLogic();
 		panel = new GamePanel(logic);
+		input = new InputHandler();
 
 		// 2. Setup Scene and Input
 		Scene scene = new Scene(panel.getGridView());
-		handleInput(scene);
+		input.handleInput(scene);
 
 		// 3. Start the Game Loop
 		startGameLoop();
@@ -49,48 +40,6 @@ public class GameLauncher extends Application {
 		primaryStage.setTitle("Push Knight Peril (MVC)");
 		primaryStage.setScene(scene);
 		primaryStage.show();
-	}
-	
-	/**
-	 * Sets up the keyboard input handler.
-	 * NOTE: We only set the *KeyPressed* flag here. *MoveExecuted* is handled in update().
-	 */
-	private void handleInput(Scene scene) {
-		scene.setOnKeyPressed(event -> {
-			if (event.getCode() == KeyCode.W) { upKeyPressed = true; } 
-			else if (event.getCode() == KeyCode.S) { downKeyPressed = true; } 
-			else if (event.getCode() == KeyCode.A) { leftKeyPressed = true; } 
-			else if (event.getCode() == KeyCode.D) { rightKeyPressed = true; } 
-			event.consume();
-		});
-
-		// Key Released: Clears both flags for the next move cycle
-		scene.setOnKeyReleased(event -> {
-			keyReleased(event.getCode());
-			event.consume();
-		});
-	}
-	
-	private void keyReleased(KeyCode keyCode) {
-		switch (keyCode) {
-		case W:
-			upKeyPressed = false;
-			upMoveExecuted = false; // Reset lock
-			break;
-		case A:
-			leftKeyPressed = false;
-			leftMoveExecuted = false; // Reset lock
-			break;
-		case S:
-			downKeyPressed = false;
-			downMoveExecuted = false; // Reset lock
-			break;
-		case D:
-			rightKeyPressed = false;
-			rightMoveExecuted = false; // Reset lock
-			break;
-		default: 
-		}
 	}
 
 	/**
@@ -121,13 +70,13 @@ public class GameLauncher extends Application {
 		boolean moveAttempted = false;
 
 		// 2. Determine Direction & Check Execution Lock (The key change)
-		if (upKeyPressed && !upMoveExecuted) { 
+		if (input.getUpKeyPressed() && !input.getUpMoveExecuted()) { 
 			dirY = -1; moveAttempted = true;
-		} else if (downKeyPressed && !downMoveExecuted) { 
+		} else if (input.getDownKeyPressed() && !input.getDownMoveExecuted()) { 
 			dirY = 1; moveAttempted = true;
-		} else if (leftKeyPressed && !leftMoveExecuted) { 
+		} else if (input.getLeftKeyPressed() && !input.getLeftMoveExecuted()) { 
 			dirX = -1; moveAttempted = true;
-		} else if (rightKeyPressed && !rightMoveExecuted) { 
+		} else if (input.getRightKeyPressed() && !input.getRightMoveExecuted()) { 
 			dirX = 1; moveAttempted = true;
 		}
 		
@@ -146,15 +95,14 @@ public class GameLauncher extends Application {
 				lastUpdateTimestamp = currentTime;
 
 				// Set the specific execution lock flag for the direction that succeeded
-				if (dirY == -1) upMoveExecuted = true;
-				else if (dirY == 1) downMoveExecuted = true;
-				else if (dirX == -1) leftMoveExecuted = true;
-				else if (dirX == 1) rightMoveExecuted = true;
+				if (dirY == -1) input.setUpMoveExecuted(actionTaken);
+				else if (dirY == 1) input.setDownMoveExecuted(actionTaken);
+				else if (dirX == -1) input.setLeftMoveExecuted(actionTaken);
+				else if (dirX == 1) input.setRightMoveExecuted(actionTaken);
 				
 				// Process Events and Update View
-				Map<String, GameUpdateEvent> events = logic.flushEvents();
-				for (GameUpdateEvent event : events.values()) {
-					panel.handleEvent(event);
+				for (GameUpdateEvent event : logic.flushEvents()) {
+				    panel.handleEvent(event);
 				}
 			}
 		}
