@@ -1,0 +1,532 @@
+package application;
+
+import javafx.animation.FadeTransition;
+import javafx.application.Application;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.stage.Stage;
+import javafx.util.Duration;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+/**
+ * Sokoban-like grid game demonstrating movement, cascading pushing, enemy
+ * health, and visual damage effects. This version implements recursive logic to
+ * allow pushing an enemy into a chain of other enemies, which will all move if
+ * the last enemy in the chain hits an empty space or is defeated by a wall.
+ */
+public class ControllerTest3 extends Application {
+
+	// --- Key State Tracking ---
+	private boolean upKeyPressed = false;
+	private boolean upMoveExecuted = false;
+	private boolean downKeyPressed = false;
+	private boolean downMoveExecuted = false;
+	private boolean leftKeyPressed = false;
+	private boolean leftMoveExecuted = false;
+	private boolean rightKeyPressed = false;
+	private boolean rightMoveExecuted = false;
+
+	// --- Constants & Configuration ---
+	private static final int TILE_SIZE = 48;
+	private static final int GRID_WIDTH = 20;
+	private static final int GRID_HEIGHT = 14;
+	private static final int MAX_ENEMY_HP = 3;
+	private static final int WALL_DAMAGE = 1; // Damage inflicted when hitting a wall
+
+	// --- Model: Game State ---
+	private int playerX = 1;
+	private int playerY = 1;
+
+	// Grid Layers (EntityGrid): 1=Wall, 2=Enemy, 0=Empty
+	private int[][] entityGrid = new int[GRID_WIDTH][GRID_HEIGHT];
+
+	// New state for tracking enemy health
+	private int[][] enemyHealthGrid = new int[GRID_WIDTH][GRID_HEIGHT];
+
+	// --- View: Visual Elements ---
+	private GridPane gridView = new GridPane();
+	// Stores the StackPane for each cell, allowing layered content
+	private StackPane[][] tilePanes = new StackPane[GRID_WIDTH][GRID_HEIGHT];
+	private Rectangle playerNode;
+
+	// Map to link enemy position (key: "x,y") to its health label for quick updates
+	private Map<String, Label> enemyHealthLabels = new HashMap<>();
+
+	@Override
+	public void start(Stage primaryStage) {
+		initializeGameGrid();
+		initializeGameView();
+
+		Scene scene = new Scene(gridView);
+		handleInput(scene);
+
+		primaryStage.setTitle("Push Knight Peril");
+		primaryStage.setScene(scene);
+		primaryStage.show();
+
+		updatePlayerView();
+	}
+
+	/**
+	 * Initializes the game grid with walls and enemies and their starting health.
+	 */
+	private void initializeGameGrid() {
+		// Create border walls
+		for (int x = 0; x < GRID_WIDTH; x++) {
+			entityGrid[x][0] = 1; // Wall
+			entityGrid[x][GRID_HEIGHT - 1] = 1; // Wall
+		}
+		for (int y = 0; y < GRID_HEIGHT; y++) {
+			entityGrid[0][y] = 1; // Wall
+			entityGrid[GRID_WIDTH - 1][y] = 1; // Wall
+		}
+
+		// Setup a chain: Player at (1,1) pushes (2,1) into (3,1) into (4,1) into Wall
+		// (5,1)
+		entityGrid[2][2] = 2;
+		enemyHealthGrid[2][2] = MAX_ENEMY_HP;
+		entityGrid[3][2] = 2;
+		enemyHealthGrid[3][2] = MAX_ENEMY_HP;
+		entityGrid[4][2] = 2;
+		enemyHealthGrid[4][2] = MAX_ENEMY_HP;
+		entityGrid[5][1] = 1; // Wall to stop the chain
+
+		// Another single enemy near a wall
+		entityGrid[8][6] = 2;
+		enemyHealthGrid[8][6] = MAX_ENEMY_HP;
+
+		// y 5-8
+		// x 6-13
+		for (int x = 1; x < GRID_WIDTH - 1; x++) {
+			for (int y = 0; y < GRID_HEIGHT - 1; y++) {
+				if (entityGrid[x][y] == 0 && (x < 8 || x > 9) && (y < 7 || y > 8)) {
+					Random random = new Random();
+					if (random.nextInt(1, 100) <= 20) {
+						entityGrid[x][y] = 1;
+					}
+				}
+			}
+		}
+
+		playerX = 9;
+		playerY = 6;
+		entityGrid[playerX][playerY] = 0; // Ensure player starts on empty tile
+	}
+
+	/**
+	 * Builds the JavaFX GridPane and all visual elements.
+	 */
+	private void initializeGameView() {
+		gridView.setAlignment(Pos.CENTER);
+		gridView.setStyle("-fx-background-color: #2c3e50; -fx-padding: 20;"); // Dark background
+
+		for (int x = 0; x < GRID_WIDTH; x++) {
+			for (int y = 0; y < GRID_HEIGHT; y++) {
+				// StackPane: The container for layering (Floor + Entity)
+				StackPane tilePane = new StackPane();
+				tilePane.setPrefSize(TILE_SIZE, TILE_SIZE);
+				tilePanes[x][y] = tilePane;
+
+				// 1. Floor Layer (Background)
+				Rectangle tile = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#7f8c8d")); // Lighter grey floor
+				tile.setStroke(Color.web("#34495e")); // Dark border
+				tilePane.getChildren().add(tile);
+
+				// 2. Entity Layer (Wall/Enemy)
+				Node entityNode = null;
+				int type = entityGrid[x][y];
+
+				if (type == 1) { // Wall
+					entityNode = createWallNode();
+				} else if (type == 2) { // Enemy
+					entityNode = createEnemyNode(x, y, enemyHealthGrid[x][y]);
+				}
+
+				if (entityNode != null) {
+					tilePane.getChildren().add(entityNode);
+				}
+
+				GridPane.setConstraints(tilePane, x, y);
+				gridView.getChildren().add(tilePane);
+			}
+		}
+
+		// 3. Player Node
+		playerNode = new Rectangle(TILE_SIZE - 10, TILE_SIZE - 10, Color.web("#27ae60")); // Emerald Green
+		playerNode.setArcWidth(15);
+		playerNode.setArcHeight(15);
+
+		// Add player to the initial tile (part of the Entity Layer)
+		tilePanes[playerX][playerY].getChildren().add(playerNode);
+	}
+
+	private Rectangle createWallNode() {
+		Rectangle wall = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#34495e")); // Dark Slate
+		wall.setArcWidth(8);
+		wall.setArcHeight(8);
+		return wall;
+	}
+
+	private StackPane createEnemyNode(int x, int y, int health) {
+		// Base rectangle for the enemy
+		Rectangle enemy = new Rectangle(TILE_SIZE - 10, TILE_SIZE - 10, Color.web("#e74c3c")); // Red
+		enemy.setArcWidth(15);
+		enemy.setArcHeight(15);
+
+		// Health Label
+		Label hpLabel = new Label(String.valueOf(health));
+		hpLabel.setFont(new Font("Arial", 16));
+		hpLabel.setTextFill(Color.WHITE);
+
+		// Store the label reference
+		String key = x + "," + y;
+		enemyHealthLabels.put(key, hpLabel);
+
+		// StackPane to hold both the body and the HP label
+		StackPane enemyStack = new StackPane(enemy, hpLabel);
+		enemyStack.setId("enemy_" + key);
+
+		return enemyStack;
+	}
+
+	private void handleInput(Scene scene) {
+		scene.setOnKeyPressed(event -> {
+			int newX = playerX;
+			int newY = playerY;
+
+			int dirX = 0;
+			int dirY = 0;
+
+			// Handle input locks to prevent continuous movement
+			if (event.getCode() == KeyCode.W) { // Up
+				upKeyPressed = true;
+				if (upKeyPressed && !upMoveExecuted) {
+					newY--;
+					dirY = -1;
+					upMoveExecuted = true;
+				} 
+			} else if (event.getCode() == KeyCode.S) { // Down
+				downKeyPressed = true;
+				if (downKeyPressed && !downMoveExecuted) {
+					newY++;
+					dirY = 1;
+					downMoveExecuted = true;
+				} 
+			} else if (event.getCode() == KeyCode.A) { // Left
+				leftKeyPressed = true;
+				if (leftKeyPressed && !leftMoveExecuted) {
+					newX--;
+					dirX = -1;
+					leftMoveExecuted = true;
+				} else
+					return;
+			} else if (event.getCode() == KeyCode.D) { // Right
+				rightKeyPressed = true;
+				if (rightKeyPressed && !rightMoveExecuted) {
+					newX++;
+					dirX = 1;
+					rightMoveExecuted = true;
+				} 
+			} 
+
+			// Attempt to move and handle interactions
+			if (dirX != 0 || dirY != 0) {
+				attemptMove(newX, newY, dirX, dirY);
+			}
+			event.consume();
+		});
+
+		scene.setOnKeyReleased(event -> {
+			keyReleased(event.getCode());
+			event.consume();
+		});
+	}
+
+	private void keyReleased(KeyCode keyCode) {
+		switch (keyCode) {
+		case W:
+			upKeyPressed = false;
+			upMoveExecuted = false;
+			break;
+		case A:
+			leftKeyPressed = false;
+			leftMoveExecuted = false;
+			break;
+		case S:
+			downKeyPressed = false;
+			downMoveExecuted = false;
+			break;
+		case D:
+			rightKeyPressed = false;
+			rightMoveExecuted = false;
+			break;
+		default: // Do nothing lol
+		}
+	}
+
+	/**
+	 * Main game logic for player movement and interaction. * @param targetX The
+	 * tile the player is trying to enter.
+	 * 
+	 * @param targetY The tile the player is trying to enter.
+	 * @param dirX    The direction of the push (+1, -1, or 0) on the X axis.
+	 * @param dirY    The direction of the push (+1, -1, or 0) on the Y axis.
+	 */
+	private void attemptMove(int targetX, int targetY, int dirX, int dirY) {
+		// 1. Check bounds
+		if (targetX < 0 || targetX >= GRID_WIDTH || targetY < 0 || targetY >= GRID_HEIGHT) {
+			return;
+		}
+
+		int targetType = entityGrid[targetX][targetY];
+
+		if (targetType == 0) {
+			// Target is empty: Move player
+			movePlayer(targetX, targetY);
+
+		} else if (targetType == 1) {
+			// Target is a wall: Blocked
+			System.out.println("Blocked by Wall at (" + targetX + ", " + targetY + ")");
+
+		} else if (targetType == 2) {
+			// Target is an enemy (Enemy 1): Try to push
+
+			int pushX = targetX + dirX;
+			int pushY = targetY + dirY;
+
+			// Check what's behind the enemy (the push target)
+			if (pushX >= 0 && pushX < GRID_WIDTH && pushY >= 0 && pushY < GRID_HEIGHT) {
+				int pushTargetType = entityGrid[pushX][pushY];
+
+				if (pushTargetType == 0) {
+					// Pushed into empty space: Move enemy and then player
+					moveEnemy(targetX, targetY, pushX, pushY);
+
+				} else if (pushTargetType == 1) {
+					// Pushed into a wall: Damage/Defeat enemy and move player
+					System.out.println("Enemy at (" + targetX + ", " + targetY + ") hit Wall at (" + pushX + ", "
+							+ pushY + ")! Applying " + WALL_DAMAGE + " damage.");
+
+					takeDamage(targetX, targetY, WALL_DAMAGE);
+					showAttackEffect(pushX, pushY); // Show effect on the wall impact location
+
+				} else if (pushTargetType == 2) {
+					// Pushed into another enemy (Enemy 2): Trigger recursive chain check
+
+					// Attempt to move Enemy 2 at (pushX, pushY) and any chain behind it
+					boolean chainSuccessful = attemptEntityPush(pushX, pushY, dirX, dirY);
+
+					if (chainSuccessful) {
+						// If the chain moved/cleared up, Enemy 1 can now move into (pushX, pushY)
+						moveEnemy(targetX, targetY, pushX, pushY);
+					} else {
+						// Chain blocked, no movement.
+						System.out.println("Chain push blocked by immovable object.");
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Recursively checks if an entity can be pushed and executes the move for that
+	 * entity and all subsequent entities in the chain if successful.
+	 * 
+	 * @return true if the entity at (entityX, entityY) moved or was destroyed,
+	 *         false if blocked.
+	 */
+	private boolean attemptEntityPush(int entityX, int entityY, int dirX, int dirY) {
+		int nextX = entityX + dirX;
+		int nextY = entityY + dirY;
+
+		// 1. Check bounds for the tile *behind* the entity
+		if (nextX < 0 || nextX >= GRID_WIDTH || nextY < 0 || nextY >= GRID_HEIGHT) {
+			return false;
+		}
+
+		int nextType = entityGrid[nextX][nextY];
+
+		if (nextType == 0) {
+			// Next spot is empty: Successful push. Move this entity.
+			moveEnemy(entityX, entityY, nextX, nextY);
+			return true;
+
+		} else if (nextType == 1) {
+			// Next spot is a wall: Successful push resulting in damage/defeat.
+			System.out.println("Enemy at (" + entityX + ", " + entityY + ") hit Wall at (" + nextX + ", " + nextY
+					+ ")! Applying " + WALL_DAMAGE + " damage.");
+
+			takeDamage(entityX, entityY, WALL_DAMAGE);
+			showAttackEffect(nextX, nextY);
+
+			// If the enemy was defeated, the spot it occupied is now clear (0),
+			// so the previous pusher (or player) can move into entityX, entityY.
+			return entityGrid[entityX][entityY] == 0;
+
+		} else if (nextType == 2) {
+			// Next spot is another enemy: Recursive push attempt.
+
+			boolean chainSuccessful = attemptEntityPush(nextX, nextY, dirX, dirY);
+
+			if (chainSuccessful) {
+				// The enemy chain moved/cleared up: Move this entity into the now empty spot
+				// (nextX, nextY).
+				moveEnemy(entityX, entityY, nextX, nextY);
+				return true;
+			} else {
+				// The chain push failed (hit an immovable object): Blocked.
+				return false;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Applies damage to an enemy at (x, y) and updates the model and view.
+	 */
+	private void takeDamage(int x, int y, int damage) {
+		int currentHealth = enemyHealthGrid[x][y];
+		int newHealth = currentHealth - damage;
+		enemyHealthGrid[x][y] = newHealth;
+
+		if (newHealth <= 0) {
+			removeEntity(x, y);
+			System.out.println("Enemy at (" + x + ", " + y + ") defeated!");
+		} else {
+			// Update the visual health label
+			Label hpLabel = enemyHealthLabels.get(x + "," + y);
+			if (hpLabel != null) {
+				hpLabel.setText(String.valueOf(newHealth));
+				System.out.println("Enemy HP at (" + x + "," + y + "): " + newHealth);
+			}
+		}
+	}
+
+	/**
+	 * Updates the player's position in the model and the view.
+	 */
+	private void movePlayer(int newX, int newY) {
+		// Remove player from old tile
+		tilePanes[playerX][playerY].getChildren().remove(playerNode);
+
+		// Update model position
+		playerX = newX;
+		playerY = newY;
+
+		// Add player to new tile
+		updatePlayerView();
+	}
+
+	/**
+	 * Moves an enemy from (oldX, oldY) to (newX, newY) and updates their health
+	 * tracking key.
+	 */
+	private void moveEnemy(int oldX, int oldY, int newX, int newY) {
+		// 1. Update Model
+		int health = enemyHealthGrid[oldX][oldY];
+
+		entityGrid[oldX][oldY] = 0;
+		enemyHealthGrid[oldX][oldY] = 0;
+
+		entityGrid[newX][newY] = 2;
+		enemyHealthGrid[newX][newY] = health;
+
+		// 2. Update View and Health Map
+		StackPane oldPane = tilePanes[oldX][oldY];
+		StackPane newPane = tilePanes[newX][newY];
+
+		// Find the enemy StackPane (which holds the rect and label)
+		Node enemyNode = oldPane.getChildren().stream()
+				.filter(node -> node.getId() != null && node.getId().startsWith("enemy_")).findFirst().orElse(null);
+
+		if (enemyNode != null) {
+			// Remove the entity from the old tile
+			oldPane.getChildren().remove(enemyNode);
+
+			// Add it to the new tile
+			newPane.getChildren().add(enemyNode);
+
+			// Update the key in the health label map
+			String oldKey = oldX + "," + oldY;
+			String newKey = newX + "," + newY;
+
+			Label hpLabel = enemyHealthLabels.remove(oldKey);
+			if (hpLabel != null) {
+				enemyHealthLabels.put(newKey, hpLabel);
+				enemyNode.setId("enemy_" + newKey); // Update ID for future lookups
+			}
+		}
+	}
+
+	/**
+	 * Removes an entity from the game and the view.
+	 */
+	private void removeEntity(int x, int y) {
+		// 1. Update Model
+		entityGrid[x][y] = 0; // Spot is now empty
+		enemyHealthGrid[x][y] = 0;
+
+		// 2. Update View (Remove the Enemy StackPane Node)
+		StackPane targetPane = tilePanes[x][y];
+		Node enemyNode = targetPane.getChildren().stream()
+				.filter(node -> node.getId() != null && node.getId().startsWith("enemy_")).findFirst().orElse(null);
+
+		if (enemyNode != null) {
+			targetPane.getChildren().remove(enemyNode);
+			// Clean up health map
+			enemyHealthLabels.remove(x + "," + y);
+		}
+	}
+
+	/**
+	 * Ensures the player node is visually placed in the current playerX/playerY
+	 * tile.
+	 */
+	private void updatePlayerView() {
+		if (!tilePanes[playerX][playerY].getChildren().contains(playerNode)) {
+			tilePanes[playerX][playerY].getChildren().add(playerNode);
+		}
+	}
+
+	/**
+	 * Shows a temporary visual hit effect on a tile (e.g., when an enemy hits a
+	 * wall).
+	 */
+	private void showAttackEffect(int x, int y) {
+		StackPane targetPane = tilePanes[x][y];
+
+		// 1. Create the visual effect Node (Yellow flash for impact/damage)
+		Rectangle flash = new Rectangle(TILE_SIZE, TILE_SIZE, Color.web("#f1c40f"));
+		flash.setOpacity(0.9);
+
+		// 2. Add the flash to the target tile's StackPane (should appear on top)
+		targetPane.getChildren().add(flash);
+
+		// 3. Create a FadeTransition to make it disappear
+		FadeTransition ft = new FadeTransition(Duration.millis(300), flash);
+		ft.setFromValue(0.9);
+		ft.setToValue(0.0);
+
+		// 4. Remove the flash node after the transition completes
+		ft.setOnFinished(e -> targetPane.getChildren().remove(flash));
+
+		// 5. Start the animation
+		ft.play();
+	}
+
+	public static void main(String[] args) {
+		launch(args);
+	}
+}
