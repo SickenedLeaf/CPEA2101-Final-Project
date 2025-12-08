@@ -1,0 +1,171 @@
+package application;
+
+/**
+ * Enemy entity with health, position, and AI behavior.
+ * Enemies chase the player using pathfinding and deal damage on contact.
+ */
+public class Enemy {
+    private int x;                          // Current X grid position
+    private int y;                          // Current Y grid position
+    private int hp;                         // Current health points
+    private final int maxHp;                // Maximum health points
+    private final int damage;               // Damage dealt to player on contact
+    private final EnemyType type;           // Type of enemy (affects behavior)
+    
+    // AI behavior properties
+    private double moveCooldown;            // Time until next move (in seconds)
+    private double moveCooldownMax;         // Base movement speed
+    private boolean isAggressive;           // Is actively chasing player
+    
+    /**
+     * Enum defining different enemy types with unique properties.
+     */
+    public enum EnemyType {
+        GOBLIN(2, 1, 0.5),          // Fast, weak
+        SKELETON(3, 1, 0.7),         // Medium speed, balanced
+        BOOMER(1, 2, 0.4),           // Fast, explodes (high damage)
+        BRUTE(6, 2, 1.0);            // Slow, tanky, high damage
+        
+        public final int maxHp;
+        public final int damage;
+        public final double moveCooldown;
+        
+        EnemyType(int maxHp, int damage, double moveCooldown) {
+            this.maxHp = maxHp;
+            this.damage = damage;
+            this.moveCooldown = moveCooldown;
+        }
+    }
+    
+    /**
+     * Creates an enemy at the specified position.
+     * @param x Initial X grid position
+     * @param y Initial Y grid position
+     * @param type Type of enemy
+     */
+    public Enemy(int x, int y, EnemyType type) {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.maxHp = type.maxHp;
+        this.hp = maxHp;
+        this.damage = type.damage;
+        this.moveCooldownMax = type.moveCooldown;
+        this.moveCooldown = 0;
+        this.isAggressive = true;
+    }
+    
+    /**
+     * Legacy constructor for backwards compatibility.
+     * Creates a basic enemy (Skeleton type).
+     */
+    public Enemy(int x, int y, int maxHp) {
+        this(x, y, EnemyType.SKELETON);
+        this.hp = maxHp;
+    }
+    
+    /**
+     * Legacy constructor.
+     */
+    public Enemy(int maxEnemyHp) {
+        this(0, 0, EnemyType.SKELETON);
+        this.hp = maxEnemyHp;
+    }
+    
+    /**
+     * Updates enemy AI behavior (called each frame).
+     * @param deltaTime Time elapsed since last update in seconds
+     * @param playerX Player's X position
+     * @param playerY Player's Y position
+     * @param pathfinder Pathfinding utility
+     * @param grid Game grid for pathfinding
+     * @return Direction to move (-1, 0, 1 for X and Y) or null if not moving
+     */
+    public int[] updateAI(double deltaTime, int playerX, int playerY, 
+                         Pathfinder pathfinder, int[][] grid) {
+        // Update cooldown
+        if (moveCooldown > 0) {
+            moveCooldown -= deltaTime;
+            return null; // Not ready to move yet
+        }
+        
+        // Check if player is adjacent (attack instead of move)
+        int distX = Math.abs(playerX - x);
+        int distY = Math.abs(playerY - y);
+        
+        if (distX + distY == 1) {
+            // Player is adjacent, prepare to attack
+            moveCooldown = moveCooldownMax;
+            return null; // Don't move, just attack
+        }
+        
+        // Use pathfinding to determine next move
+        int[] nextMove = pathfinder.getNextMove(x, y, playerX, playerY, grid);
+        
+        if (nextMove != null) {
+            moveCooldown = moveCooldownMax; // Reset cooldown
+        }
+        
+        return nextMove;
+    }
+    
+    /**
+     * Checks if this enemy is adjacent to the player (can attack).
+     * @param playerX Player's X position
+     * @param playerY Player's Y position
+     * @return True if enemy can attack player
+     */
+    public boolean canAttackPlayer(int playerX, int playerY) {
+        int distX = Math.abs(playerX - x);
+        int distY = Math.abs(playerY - y);
+        return (distX + distY == 1);
+    }
+    
+    /**
+     * Gets the damage this enemy deals.
+     * @return Damage value
+     */
+    public int getDamage() {
+        return damage;
+    }
+    
+    /**
+     * Gets enemy type.
+     * @return Enemy type
+     */
+    public EnemyType getType() {
+        return type;
+    }
+    
+    /**
+     * Gets maximum health.
+     * @return Max HP
+     */
+    public int getMaxHp() {
+        return maxHp;
+    }
+    
+    // Existing methods from original code
+    public int getX() { return x; }
+    public int getY() { return y; }
+    public int getHp() { return hp; }
+
+    public void moveTo(int newX, int newY) {
+        this.x = newX;
+        this.y = newY;
+    }
+
+    public void takeDamage(int damage) {
+        hp -= damage;
+        if (hp < 0) hp = 0;
+    }
+
+    public boolean isDead() {
+        return hp <= 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Enemy[type=" + type + ", x=" + x + ", y=" + y + ", hp=" + hp + "/" + maxHp + "]";
+    }
+}
