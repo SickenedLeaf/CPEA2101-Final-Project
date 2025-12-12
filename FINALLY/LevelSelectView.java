@@ -9,9 +9,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 
-/**
- * Level selection menu view.
- */
 public class LevelSelectView {
     private Scene scene;
     private VBox layout;
@@ -27,7 +24,6 @@ public class LevelSelectView {
         layout.setAlignment(Pos.CENTER);
         layout.setStyle("-fx-background-color: #0f3460;");
         
-        // Title
         Text title = new Text("PUSH KNIGHT PERIL");
         title.setFont(Font.font("Arial", FontWeight.BOLD, 48));
         title.setFill(Color.WHITE);
@@ -36,17 +32,15 @@ public class LevelSelectView {
         subtitle.setFont(Font.font("Arial", FontWeight.NORMAL, 24));
         subtitle.setFill(Color.LIGHTGRAY);
         
-        // Level buttons
         Button level1Btn = createLevelButton("Level 1: Beginner", 
-            "5 Waves • Easy Enemies");
+            "5 Waves - Easy Enemies");
         Button level2Btn = createLevelButton("Level 2: Intermediate", 
-            "7 Waves • Mixed Enemies");
+            "7 Waves - Mixed Enemies");
         Button level3Btn = createLevelButton("Level 3: Advanced", 
-            "10 Waves • Challenging");
+            "10 Waves - Challenging");
         Button endlessBtn = createLevelButton("Endless Mode", 
             "Survive as long as you can!");
         
-        // Set button actions
         level1Btn.setOnAction(e -> {
             if (onLevel1Selected != null) onLevel1Selected.run();
         });
@@ -63,8 +57,7 @@ public class LevelSelectView {
             if (onEndlessModeSelected != null) onEndlessModeSelected.run();
         });
         
-        // Instructions
-        Text instructions = new Text("Use Arrow Keys or WASD to move and push enemies\nPress SPACE for push ability");
+        Text instructions = new Text("Use WASD or Arrow Keys to move and push enemies");
         instructions.setFont(Font.font("Arial", 14));
         instructions.setFill(Color.LIGHTGRAY);
         instructions.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
@@ -82,9 +75,6 @@ public class LevelSelectView {
         scene = new Scene(layout, width, height);
     }
     
-    /**
-     * Creates a styled level button.
-     */
     private Button createLevelButton(String mainText, String subText) {
         Button btn = new Button(mainText + "\n" + subText);
         btn.setFont(Font.font("Arial", FontWeight.BOLD, 18));
@@ -124,9 +114,7 @@ public class LevelSelectView {
         return btn;
     }
     
-    public Scene getScene() {
-        return scene;
-    }
+    public Scene getScene() { return scene; }
     
     public void setOnLevel1Selected(Runnable callback) {
         this.onLevel1Selected = callback;
