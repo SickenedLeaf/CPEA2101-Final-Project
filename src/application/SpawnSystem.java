@@ -93,10 +93,10 @@ public class SpawnSystem {
     
     private void updateSpawnRates() {
         if (currentWave <= 2) {
-            goblinRate = 0.6;
-            skeletonRate = 0.3;
+            goblinRate = 0.3;
+            skeletonRate = 0.5;
             boomerRate = 0.1;
-            bruteRate = 0.0;
+            bruteRate = 0.1;
         } else if (currentWave <= 5) {
             goblinRate = 0.4;
             skeletonRate = 0.35;

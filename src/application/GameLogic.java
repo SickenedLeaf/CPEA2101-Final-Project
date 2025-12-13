@@ -177,7 +177,7 @@ public class GameLogic {
             }
             
             // Update enemy cooldowns
-            enemy.updateCooldowns(deltaTime);
+            enemy.updateCooldowns(deltaTime, player.getX(), player.getY());
             
             // Check if can attack player (with cooldown check)
             if (enemy.canAttackPlayer(player.getX(), player.getY())) {
@@ -210,12 +210,18 @@ public class GameLogic {
                 // Validate and execute move
                 if (isValidPosition(targetX, targetY)) {
                     int targetType = entityGrid[targetX][targetY];
-                    
+
+                    // Prevent enemies from moving into the player’s tile
+                    if (targetX == player.getX() && targetY == player.getY()) {
+                        continue; // skip this move
+                    }
+
                     // Move to empty or passable obstacle
-                    if (targetType == 0 || targetType == 4) {
+                    if (targetType == 0) {
                         moveEnemy(enemy, targetX, targetY);
                     }
                 }
+
             }
         }
         
@@ -252,7 +258,7 @@ public class GameLogic {
     private void handleExplosion(BoomerGoblin boomer) {
         int ex = boomer.getX();
         int ey = boomer.getY();
-        int explosionDamage = boomer.getExplosionDamage();
+        int explosionDamage = boomer.getDamage();
         
         addEvent(new GameUpdateEvent(GameUpdateEvent.Type.IMPACT, ex, ey));
         

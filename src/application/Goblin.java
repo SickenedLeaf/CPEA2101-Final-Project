@@ -42,37 +42,45 @@ public class Goblin extends Enemy {
     // --- Animation Helpers ---
     @Override
     public void playIdleAnimation() {
-        if ("DOWN".equals(direction)) {
-            animator.playAction(0, 6, 3, 50_000_000L, true, null);
-        } else if ("UP".equals(direction)) {
-            animator.playAction(0, 9, 3, 50_000_000L, true, null);
-        } else if ("RIGHT".equals(direction)) {
-            animator.playAction(0, 0, 3, 50_000_000L, true, null);
-        } else if ("LEFT".equals(direction)) {
-            animator.playAction(0, 3, 3, 50_000_000L, true, null);
+        if ("DOWN".equals(this.direction)) {
+            animator.playAction(0, 6, 3, 250_000_000L, true, null);
+        } else if ("UP".equals(this.direction)) {
+            animator.playAction(0, 9, 3, 250_000_000L, true, null);
+        } else if ("RIGHT".equals(this.direction)) {
+            animator.playAction(0, 0, 3, 250_000_000L, true, null);
+        } else if ("LEFT".equals(this.direction)) {
+            animator.playAction(0, 3, 3, 250_000_000L, true, null);
         }
     }
 
     @Override
-    public void playMoveAnimation(String dir) {
+    public void playMoveAnimation() {
         // Update instance variable
-        this.direction = dir;
 
         Runnable idleCallback = this::playIdleAnimation;
-        if ("DOWN".equals(dir)) {
+        if ("DOWN".equals(this.direction)) {
             animator.playAction(2, 0, 6, 50_000_000L, false, idleCallback);
-        } else if ("UP".equals(dir)) {
+        } else if ("UP".equals(this.direction)) {
             animator.playAction(2, 6, 6, 50_000_000L, false, idleCallback);
-        } else if ("RIGHT".equals(dir)) {
+        } else if ("RIGHT".equals(this.direction)) {
             animator.playAction(1, 0, 6, 50_000_000L, false, idleCallback);
-        } else if ("LEFT".equals(dir)) {
+        } else if ("LEFT".equals(this.direction)) {
             animator.playAction(1, 6, 6, 50_000_000L, false, idleCallback);
         }
     }
 
     @Override
     public void playAttackAnimation() {
-        animator.playAction(3, 0, 4, 120_000_000L, false, this::playIdleAnimation);
+    	Runnable idleCallback = this::playIdleAnimation;
+    	if ("DOWN".equals(this.direction)) {
+            animator.playAction(4, 0, 6, 100_000_000L, false, idleCallback);
+        } else if ("UP".equals(this.direction)) {
+            animator.playAction(4, 6, 6, 100_000_000L, false, idleCallback);
+        } else if ("RIGHT".equals(this.direction)) {
+            animator.playAction(3, 0, 6, 100_000_000L, false, idleCallback);
+        } else if ("LEFT".equals(this.direction)) {
+            animator.playAction(3, 6, 6, 100_000_000L, false, idleCallback);
+        }
     }
 
     @Override

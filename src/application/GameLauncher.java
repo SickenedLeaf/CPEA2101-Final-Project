@@ -2,6 +2,7 @@ package application;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -158,12 +159,12 @@ public class GameLauncher extends Application {
         if (gameLoop != null) {
             gameLoop.stop();
         }
-        
+
         SpawnSystem spawn = logic.getSpawnSystem();
-        
+
         String title = victory ? "LEVEL COMPLETE!" : "GAME OVER";
         String message;
-        
+
         if (victory) {
             message = "Congratulations! You completed Level " + spawn.getLevelNumber() + "!\n\n" +
                      "Final Wave: " + spawn.getCurrentWave() + "\n" +
@@ -180,30 +181,33 @@ public class GameLauncher extends Application {
                          "Would you like to try again?";
             }
         }
-        
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        
-        ButtonType playAgain = new ButtonType("Play Again");
-        ButtonType levelSelect = new ButtonType("Level Select");
-        ButtonType quit = new ButtonType("Quit");
-        
-        alert.getButtonTypes().setAll(playAgain, levelSelect, quit);
-        
-        alert.showAndWait().ifPresent(response -> {
-            if (response == playAgain) {
-                if (spawn.isEndlessMode()) {
-                    startGame(0);
+
+        // Schedule dialog after current animation/layout cycle
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+
+            ButtonType playAgain = new ButtonType("Play Again");
+            ButtonType levelSelect = new ButtonType("Level Select");
+            ButtonType quit = new ButtonType("Quit");
+
+            alert.getButtonTypes().setAll(playAgain, levelSelect, quit);
+
+            alert.showAndWait().ifPresent(response -> {
+                if (response == playAgain) {
+                    if (spawn.isEndlessMode()) {
+                        startGame(0);
+                    } else {
+                        startGame(spawn.getLevelNumber());
+                    }
+                } else if (response == levelSelect) {
+                    showLevelSelect();
                 } else {
-                    startGame(spawn.getLevelNumber());
+                    System.exit(0);
                 }
-            } else if (response == levelSelect) {
-                showLevelSelect();
-            } else {
-                System.exit(0);
-            }
+            });
         });
     }
     

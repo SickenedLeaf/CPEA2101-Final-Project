@@ -77,15 +77,14 @@ public class Player {
         
         health -= damage;
         if ("DOWN".equals(this.direction)) {
-            animator.playAction(5, 9, 3, 50_000_000, false, () -> playIdleAnimation());
+            animator.playAction(5, 6, 3, 80_000_000, false, () -> playIdleAnimation());
         } else if ("UP".equals(this.direction)) {
-            animator.playAction(5, 6, 3, 50_000_000, false, () -> playIdleAnimation());
+            animator.playAction(5, 9, 3, 80_000_000, false, () -> playIdleAnimation());
         } else if ("RIGHT".equals(this.direction)) {
-            animator.playAction(5, 3, 3, 50_000_000, false, () -> playIdleAnimation());
+            animator.playAction(5, 0, 3, 80_000_000, false, () -> playIdleAnimation());
         } else if ("LEFT".equals(this.direction)) {
-            animator.playAction(5, 0, 3, 50_000_000, false, () -> playIdleAnimation());
+            animator.playAction(5, 3, 3, 80_000_000, false, () -> playIdleAnimation());
         }
-        animator.playAction(5, 0, 3, 50_000_000, false, () -> playIdleAnimation());
         if (health <= 0) {
             health = 0;
             alive = false;

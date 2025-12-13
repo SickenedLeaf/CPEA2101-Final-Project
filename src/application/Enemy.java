@@ -35,9 +35,9 @@ public abstract class Enemy {
         this.y = y;
         this.type = type;
         this.dead = false;
-        this.attackCooldown = 1.0;
         this.attackCooldownMax = 1.0; // 1 second between attacks by default
-
+        this.attackCooldown = attackCooldownMax;
+        
         // Initialize animator with enemy sprite sheet
         this.animator = new SpriteAnimator(spriteSheet, 72, 72);
 
@@ -49,29 +49,40 @@ public abstract class Enemy {
     public abstract int[] updateAI(double deltaTime, int playerX, int playerY,
                                    Pathfinder pathfinder, int[][] grid);
 
-    public void updateCooldowns(double deltaTime) {
-        if (attackCooldown > 0) {
-            attackCooldown -= deltaTime;
-            if (attackCooldown < 0) attackCooldown = 0;
+    public void updateCooldowns(double deltaTime, int playerX, int playerY) {
+        int dx = Math.abs(x - playerX);
+        int dy = Math.abs(y - playerY);
+        boolean adjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
+
+        if (adjacent) {
+            // Tick down cooldown while player is in range
+            if (attackCooldown > 0) {
+                attackCooldown -= deltaTime;
+                if (attackCooldown < 0) attackCooldown = 0;
+            }
+        } else {
+            // Reset cooldown if player leaves range
+            attackCooldown = attackCooldownMax/2;
         }
     }
 
-    // --- Combat ---
     public boolean canAttackPlayer(int playerX, int playerY) {
-        if (attackCooldown > 0) return false;
-
         int dx = Math.abs(x - playerX);
         int dy = Math.abs(y - playerY);
-        return dx <= 1 && dy <= 1 && !(dx == 0 && dy == 0);
+        boolean adjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
+
+        // Attack only if adjacent AND cooldown expired
+        return adjacent && attackCooldown <= 0;
     }
 
     public void tryAttackPlayer(int playerX, int playerY) {
         if (canAttackPlayer(playerX, playerY)) {
-            activateAttackCooldown();
+            activateAttackCooldown(); // reset after attack
             playAttackAnimation();
-            System.out.println("[COMBAT] " + type + " begins attack wind-up at (" + x + "," + y + ")");
+            System.out.println("[COMBAT] " + type + " attacks player at (" + x + "," + y + ")");
         }
     }
+
 
     public void activateAttackCooldown() {
         attackCooldown = attackCooldownMax;
@@ -93,12 +104,12 @@ public abstract class Enemy {
         this.x = newX;
         this.y = newY;
         this.direction = direction; // update facing direction
-        playMoveAnimation(direction);
+        playMoveAnimation();
     }
 
     // --- Abstract Animation Hooks ---
     public abstract void playIdleAnimation();
-    public abstract void playMoveAnimation(String direction);
+    public abstract void playMoveAnimation();
     public abstract void playAttackAnimation();
     public abstract void playDeathAnimation();
 
