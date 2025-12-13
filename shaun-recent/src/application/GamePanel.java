@@ -11,6 +11,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.Priority;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -62,6 +64,8 @@ public class GamePanel {
 
         topBar = new VBox(10);
         topBar.setAlignment(Pos.CENTER);
+        topBar.setMinHeight(80);  // Ensure minimum height for top bar
+        topBar.setPrefHeight(80); // Set preferred height
         topBar.setStyle("-fx-background-color: #16213e; -fx-padding: 10;");
 
         HBox topInfo = new HBox(30);
@@ -86,6 +90,8 @@ public class GamePanel {
 
         bottomBar = new HBox();
         bottomBar.setAlignment(Pos.CENTER);
+        bottomBar.setMinHeight(60);  // Ensure minimum height for bottom bar
+        bottomBar.setPrefHeight(60); // Set preferred height
         bottomBar.setStyle("-fx-background-color: #16213e; -fx-padding: 10;");
 
         cooldownText = new Text("Push Ready (SPACE)");
@@ -95,8 +101,11 @@ public class GamePanel {
 
         mainLayout.setTop(topBar);
         mainLayout.setBottom(bottomBar);
+        // The gridView will be set after initialization in initializeGrid()
 
-        // The gridView will be set after initialization
+        // Set margins to ensure proper spacing
+        BorderPane.setMargin(topBar, new Insets(10));
+        BorderPane.setMargin(bottomBar, new Insets(10));
     }
 
     private void initializeGrid() {
@@ -156,10 +165,14 @@ public class GamePanel {
             }
         }
 
-        // Add the gridView to the main layout at the center position
+        // Add the gridView to the main layout at the center position and set margins
         mainLayout.setCenter(gridView);
         BorderPane.setMargin(gridView, new Insets(10));
         BorderPane.setAlignment(gridView, Pos.CENTER);
+
+        // Ensure the layout properly respects the top and bottom bars by setting preferred sizes
+        topBar.setMaxHeight(topBar.getMinHeight());
+        bottomBar.setMaxHeight(bottomBar.getMinHeight());
     }
 
     private ImageView createWallNode() { return new ImageView(wallTile); }
@@ -464,8 +477,25 @@ public class GamePanel {
 
     // Method to handle window resize - adjusts scaling if needed
     public void handleResize(double newWidth, double newHeight) {
-        // In the future, could implement dynamic scaling or padding
-        // For now, keep the game grid centered regardless of window size
+        // Ensure the layout properly responds to resize by setting preferred sizes
+        if (mainLayout != null && gridView != null && topBar != null && bottomBar != null) {
+            mainLayout.setPrefSize(newWidth, newHeight);
+
+            // Calculate available space for the grid by accounting for top and bottom bars with their padding/margins
+            double totalBarHeight = topBar.getMinHeight() + bottomBar.getMinHeight();
+            double totalPadding = 20; // top margin
+            double totalMargin = 20; // bottom margin
+
+            // Set constraints for the bars to maintain their minimum sizes
+            topBar.setMaxHeight(topBar.getMinHeight());
+            bottomBar.setMaxHeight(bottomBar.getMinHeight());
+
+            // Calculate available space for the grid
+            double availableHeight = newHeight - totalBarHeight - totalPadding - totalMargin;
+
+            // Set constraints for the grid to ensure it fits properly between the bars
+            gridView.setMaxHeight(Math.max(availableHeight, 100)); // Ensure minimum grid height
+        }
     }
 
     private static class VisualEntity {

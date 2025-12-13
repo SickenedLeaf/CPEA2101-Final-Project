@@ -14,6 +14,7 @@ public class GameOverView {
     // Callbacks for button actions
     private Runnable onRestartCallback;
     private Runnable onMenuCallback;
+    private Runnable onLevelSelectCallback;
 
     public GameOverView() {
         initialize();
@@ -38,16 +39,25 @@ public class GameOverView {
 
         // Buttons
         Button restartButton = new Button("Restart Level");
+        Button levelSelectButton = new Button("Level Select");
         Button menuButton = new Button("Main Menu");
 
         // Style buttons to match other menus
         setupButtonStyle(restartButton);
+        setupButtonStyle(levelSelectButton);
         setupButtonStyle(menuButton);
 
         restartButton.setOnAction(e -> {
             AudioManager.getInstance().playUiSound("CONFIRM");
             if (onRestartCallback != null) {
                 onRestartCallback.run();
+            }
+        });
+
+        levelSelectButton.setOnAction(e -> {
+            AudioManager.getInstance().playUiSound("CONFIRM");
+            if (onLevelSelectCallback != null) {
+                onLevelSelectCallback.run();
             }
         });
 
@@ -60,7 +70,7 @@ public class GameOverView {
 
         VBox buttonsContainer = new VBox(15);
         buttonsContainer.setAlignment(Pos.CENTER);
-        buttonsContainer.getChildren().addAll(restartButton, menuButton);
+        buttonsContainer.getChildren().addAll(restartButton, levelSelectButton, menuButton);
 
         container.getChildren().addAll(title, subtitle, buttonsContainer);
         container.setPadding(new Insets(50));
@@ -123,6 +133,10 @@ public class GameOverView {
 
     public void setOnMenuCallback(Runnable callback) {
         this.onMenuCallback = callback;
+    }
+
+    public void setOnLevelSelectCallback(Runnable callback) {
+        this.onLevelSelectCallback = callback;
     }
 
     public Pane getRoot() {

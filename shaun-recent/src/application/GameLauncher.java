@@ -54,6 +54,11 @@ public class GameLauncher extends Application {
             input = null;
         }
 
+        // Clean up game panel if it exists
+        if (panel != null) {
+            panel = null;
+        }
+
         // Get current window dimensions to handle resize
         double currentWidth = primaryStage.getWidth();
         double currentHeight = primaryStage.getHeight();
@@ -88,6 +93,11 @@ public class GameLauncher extends Application {
             input = null;
         }
 
+        // Clean up game panel if it exists
+        if (panel != null) {
+            panel = null;
+        }
+
         // Get current window dimensions to handle resize
         double currentWidth = primaryStage.getWidth();
         double currentHeight = primaryStage.getHeight();
@@ -116,6 +126,11 @@ public class GameLauncher extends Application {
         // Clean up input handlers if they exist
         if (input != null) {
             input = null;
+        }
+
+        // Clean up game panel if it exists
+        if (panel != null) {
+            panel = null;
         }
 
         // Get current window dimensions to handle resize
@@ -177,6 +192,9 @@ public class GameLauncher extends Application {
             showMainMenu();
         });
 
+        // Prevent the menu button from receiving keyboard focus to avoid interfering with spacebar push
+        backToMenuButton.setFocusTraversable(false);
+
         // Position the button in the upper right corner using AnchorPane
         javafx.scene.layout.AnchorPane anchorPane = new javafx.scene.layout.AnchorPane();
         anchorPane.getChildren().add(gameRoot.getCenter());
@@ -194,6 +212,20 @@ public class GameLauncher extends Application {
         double height = currentHeight > 0 ? currentHeight : WINDOW_HEIGHT;
 
         Scene gameScene = new Scene(gameRoot, width, height);
+
+        // Add resize listener to update the GamePanel when the window is resized
+        gameScene.widthProperty().addListener((obs, oldVal, newVal) -> {
+            if (panel != null) {
+                panel.handleResize((Double) newVal, gameScene.getHeight());
+            }
+        });
+
+        gameScene.heightProperty().addListener((obs, oldVal, newVal) -> {
+            if (panel != null) {
+                panel.handleResize(gameScene.getWidth(), (Double) newVal);
+            }
+        });
+
         input.handleInput(gameScene);
 
         startGameLoop();
@@ -388,6 +420,11 @@ public class GameLauncher extends Application {
                     input = null;
                 }
 
+                // Clean up game panel if it exists
+                if (panel != null) {
+                    panel = null;
+                }
+
                 // Get current window dimensions to handle resize
                 double currentWidth = primaryStage.getWidth();
                 double currentHeight = primaryStage.getHeight();
@@ -399,6 +436,7 @@ public class GameLauncher extends Application {
                 GameOverView gameOverView = new GameOverView();
                 gameOverView.setOnRestartCallback(() -> startGame(0)); // Start endless mode
                 gameOverView.setOnMenuCallback(this::showMainMenu);
+                gameOverView.setOnLevelSelectCallback(this::showLevelSelect);
                 Scene gameOverScene = new Scene(gameOverView.getRoot(), width, height);
                 primaryStage.setScene(gameOverScene);
             });
